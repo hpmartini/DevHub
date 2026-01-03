@@ -1,0 +1,13 @@
+{
+  "directories": [
+    "/Users/hape/projects"
+  ],
+  "scanDepth": 2,
+  "excludePatterns": [
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    ".next"
+  ]
+}
