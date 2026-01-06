@@ -34,9 +34,9 @@ services:
     volumes:
       # Mount Docker socket for container management (optional)
       - /var/run/docker.sock:/var/run/docker.sock
-      # Mount user's home Projects directory (read-only for scanning)
-      - ${HOME}/Projects:/Users/hape/Projects:ro
-      - ${HOME}/PROJECTS:/Users/hape/PROJECTS:ro
+      # Mount user's home Projects directory (read-write for terminal shells)
+      - ${HOME}/Projects:/Users/hape/Projects
+      - ${HOME}/PROJECTS:/Users/hape/PROJECTS
       # Mount Applications for IDE detection (read-only)
       - /Applications:/Applications:ro
       # Persist app data
