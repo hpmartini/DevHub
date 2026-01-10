@@ -6,14 +6,6 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
-    proxy: {
-      // Proxy API requests to backend server
-      '/api': {
-        target: 'http://localhost:3099',
-        changeOrigin: true,
-        ws: true, // Enable WebSocket proxying
-      },
-    },
   },
   plugins: [react()],
   resolve: {
@@ -22,10 +14,11 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: 'dist/landing',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
-        landing: path.resolve(__dirname, 'landing.html'),
-        dashboard: path.resolve(__dirname, 'dashboard.html'),
+        main: path.resolve(__dirname, 'landing.html'),
       },
     },
   },

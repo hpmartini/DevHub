@@ -22,10 +22,11 @@ export default defineConfig({
     },
   },
   build: {
+    outDir: 'dist/dashboard',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
-        landing: path.resolve(__dirname, 'landing.html'),
-        dashboard: path.resolve(__dirname, 'dashboard.html'),
+        main: path.resolve(__dirname, 'dashboard.html'),
       },
     },
   },
