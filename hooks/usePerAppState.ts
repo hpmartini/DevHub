@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { PerAppViewState, DEFAULT_PER_APP_STATE, EditorType, DevToolsTab, ConsoleFilter } from '../types';
+import { PerAppViewState, DEFAULT_PER_APP_STATE, EditorType, DevToolsTab, ConsoleFilter, ViewMode } from '../types';
 import type { TerminalTab } from './useSharedTerminals';
 
 /**
@@ -82,6 +82,9 @@ export function usePerAppState() {
       devToolsTab: state.devToolsTab,
       consoleFilter: state.consoleFilter,
       isBrowserHidden: state.isBrowserHidden,
+      activeView: state.activeView,
+      panelSizes: state.panelSizes,
+      isTerminalHidden: state.isTerminalHidden,
 
       // View state setters
       setEditorType: (value: EditorType) => updateAppState(appId, { editorType: value }),
@@ -89,6 +92,9 @@ export function usePerAppState() {
       setDevToolsTab: (value: DevToolsTab) => updateAppState(appId, { devToolsTab: value }),
       setConsoleFilter: (value: ConsoleFilter) => updateAppState(appId, { consoleFilter: value }),
       setIsBrowserHidden: (value: boolean) => updateAppState(appId, { isBrowserHidden: value }),
+      setActiveView: (value: ViewMode) => updateAppState(appId, { activeView: value }),
+      setPanelSizes: (value: [number, number, number] | null) => updateAppState(appId, { panelSizes: value }),
+      setIsTerminalHidden: (value: boolean) => updateAppState(appId, { isTerminalHidden: value }),
 
       // Terminal state
       terminalTabs: terminalState.tabs,

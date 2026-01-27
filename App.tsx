@@ -34,7 +34,6 @@ function AppContent() {
     loading,
     error: _error,
     selectedAppId,
-    selectedApp,
     settings,
     setSelectedAppId,
     handleStartApp,
@@ -66,8 +65,7 @@ function AppContent() {
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Details/Coding view state
-  const [detailsViewMode, setDetailsViewMode] = useState<'details' | 'coding'>('details');
+  // View tab bar hidden state (Details/Coding view mode is now per-app via perAppState)
   const [isViewTabBarHidden, setIsViewTabBarHidden] = useState(() => {
     const saved = localStorage.getItem('devOrbitViewTabBarHidden');
     return saved === 'true';
@@ -87,8 +85,10 @@ function AppContent() {
   }, []);
 
   const handleToggleDetailsView = useCallback(() => {
-    setDetailsViewMode(prev => prev === 'details' ? 'coding' : 'details');
-  }, []);
+    if (!selectedAppId) return;
+    const helpers = createAppStateHelpers(selectedAppId);
+    helpers.setActiveView(helpers.activeView === 'details' ? 'coding' : 'details');
+  }, [selectedAppId, createAppStateHelpers]);
 
   const handleToggleFavoritesPopup = useCallback(() => {
     setShowFavoritesPopup(prev => !prev);
@@ -354,8 +354,8 @@ function AppContent() {
           mainDirectory="Projects"
           keyboardShortcuts={settings?.keyboardShortcuts}
           showViewSwitcher={isViewTabBarHidden}
-          detailsViewMode={detailsViewMode}
-          onViewModeChange={setDetailsViewMode}
+          detailsViewMode={selectedAppId ? createAppStateHelpers(selectedAppId).activeView : 'details'}
+          onViewModeChange={(mode) => { if (selectedAppId) createAppStateHelpers(selectedAppId).setActiveView(mode); }}
           onShowViewTabBar={handleToggleViewTabBar}
           showFavoritesPopupExternal={showFavoritesPopup}
           showProjectsPopupExternal={showProjectsPopup}
@@ -477,27 +477,44 @@ function AppContent() {
               </div>
             </div>
           ) : (
-            <AppDetail
-              app={selectedApp ?? null}
-              onStart={handleStartApp}
-              onStop={handleStopApp}
-              onRestart={handleRestartApp}
-              onAnalyze={handleAnalyzeApp}
-              onOpenInBrowser={handleOpenInBrowser}
-              onInstallDeps={handleInstallDeps}
-              onSetPort={handleSetPort}
-              onRename={handleRename}
-              onToggleFavorite={handleToggleFavorite}
-              onToggleArchive={handleToggleArchive}
-              onOpenInFinder={handleOpenInFinder}
-              onOpenInTerminal={handleOpenInTerminal}
-              preferredIDE={(selectedApp && settings?.preferredIDEs?.[selectedApp.id]) || null}
-              isViewTabBarHidden={isViewTabBarHidden}
-              onToggleViewTabBar={handleToggleViewTabBar}
-              activeView={detailsViewMode}
-              onViewChange={setDetailsViewMode}
-              perAppState={selectedApp ? createAppStateHelpers(selectedApp.id) : undefined}
-            />
+            /* Render one AppDetail per open tab — inactive tabs are kept mounted
+               but moved offscreen to prevent iframe/process suspension */
+            <div className="flex-1 flex flex-col min-h-0 relative">
+              {tabs.map(tab => {
+                const tabApp = apps.find(a => a.id === tab.appId);
+                const isActive = tab.appId === selectedAppId;
+                const appStateHelpers = tabApp ? createAppStateHelpers(tabApp.id) : undefined;
+                return (
+                  <div
+                    key={tab.appId}
+                    className={isActive ? 'flex-1 flex flex-col min-h-0' : 'pointer-events-none'}
+                    style={!isActive ? { position: 'absolute', left: '-9999px', top: 0, width: '100%', height: '100%' } : undefined}
+                  >
+                    <AppDetail
+                      app={tabApp ?? null}
+                      onStart={handleStartApp}
+                      onStop={handleStopApp}
+                      onRestart={handleRestartApp}
+                      onAnalyze={handleAnalyzeApp}
+                      onOpenInBrowser={handleOpenInBrowser}
+                      onInstallDeps={handleInstallDeps}
+                      onSetPort={handleSetPort}
+                      onRename={handleRename}
+                      onToggleFavorite={handleToggleFavorite}
+                      onToggleArchive={handleToggleArchive}
+                      onOpenInFinder={handleOpenInFinder}
+                      onOpenInTerminal={handleOpenInTerminal}
+                      preferredIDE={(tabApp && settings?.preferredIDEs?.[tabApp.id]) || null}
+                      isViewTabBarHidden={isViewTabBarHidden}
+                      onToggleViewTabBar={handleToggleViewTabBar}
+                      activeView={appStateHelpers?.activeView}
+                      onViewChange={appStateHelpers?.setActiveView}
+                      perAppState={appStateHelpers}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </main>

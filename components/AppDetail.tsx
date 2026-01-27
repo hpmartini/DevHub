@@ -19,7 +19,7 @@ import {
   MoreHorizontal,
   ChevronUp,
 } from 'lucide-react';
-import { AppConfig, AppStatus } from '../types';
+import { AppConfig, AppStatus, ViewMode } from '../types';
 import type { PerAppStateHelpers } from '../hooks/usePerAppState';
 import { StatusBadge } from './StatusBadge';
 import { PerformanceCharts } from './PerformanceCharts';
@@ -50,8 +50,6 @@ interface AppDetailProps {
   // Per-app state (terminals, editor, devtools)
   perAppState?: PerAppStateHelpers;
 }
-
-export type ViewMode = 'details' | 'coding';
 
 export const AppDetail: React.FC<AppDetailProps> = ({
   app,
@@ -206,12 +204,13 @@ export const AppDetail: React.FC<AppDetailProps> = ({
       {/* View Content - Both views are always mounted, visibility controlled by CSS */}
       <div className="flex-1 overflow-hidden relative">
         {/* Details View */}
+        {/* Use visibility instead of display:none to prevent Chromium from throttling JS/timers */}
         <div
           id="details-panel"
           role="tabpanel"
           aria-labelledby="details-tab"
           className={`space-y-6 p-6 max-w-7xl mx-auto h-full overflow-auto ${
-            activeView === 'details' ? 'block' : 'hidden'
+            activeView === 'details' ? 'visible' : 'invisible absolute'
           }`}
         >
             {/* Header */}
@@ -466,12 +465,12 @@ export const AppDetail: React.FC<AppDetailProps> = ({
             <div ref={detailsTerminalSlotRef} className="h-[400px]" />
           </div>
 
-        {/* Coding View - Always mounted, hidden when not active */}
+        {/* Coding View - Always mounted, use visibility to prevent throttling */}
         <div
           id="coding-panel"
           role="tabpanel"
           aria-labelledby="coding-tab"
-          className={`absolute inset-0 ${activeView === 'coding' ? 'block' : 'hidden'}`}
+          className={`absolute inset-0 ${activeView === 'coding' ? 'visible' : 'invisible pointer-events-none'}`}
         >
           <CodingView
             app={app}
@@ -486,6 +485,10 @@ export const AppDetail: React.FC<AppDetailProps> = ({
             onConsoleFilterChange={perAppState?.setConsoleFilter}
             isBrowserHidden={perAppState?.isBrowserHidden}
             onBrowserHiddenChange={perAppState?.setIsBrowserHidden}
+            isTerminalHidden={perAppState?.isTerminalHidden}
+            onTerminalHiddenChange={perAppState?.setIsTerminalHidden}
+            panelSizes={perAppState?.panelSizes}
+            onPanelSizesChange={perAppState?.setPanelSizes}
           />
         </div>
 

@@ -31,6 +31,14 @@ interface CodingViewProps {
   isBrowserHidden?: boolean;
   /** Callback when browser panel visibility changes */
   onBrowserHiddenChange?: (hidden: boolean) => void;
+  /** Controlled terminal panel visibility */
+  isTerminalHidden?: boolean;
+  /** Callback when terminal panel visibility changes */
+  onTerminalHiddenChange?: (hidden: boolean) => void;
+  /** Controlled panel sizes [terminal, editor, browser] */
+  panelSizes?: [number, number, number] | null;
+  /** Callback when panel sizes change */
+  onPanelSizesChange?: (sizes: [number, number, number] | null) => void;
 }
 
 export function CodingView({
@@ -46,8 +54,21 @@ export function CodingView({
   onConsoleFilterChange,
   isBrowserHidden: controlledBrowserHidden,
   onBrowserHiddenChange,
+  isTerminalHidden: controlledTerminalHidden,
+  onTerminalHiddenChange,
+  panelSizes,
+  onPanelSizesChange,
 }: CodingViewProps) {
-  const [isTerminalHidden, setIsTerminalHidden] = useState(false);
+  // Use controlled or uncontrolled terminal visibility
+  const [internalTerminalHidden, setInternalTerminalHidden] = useState(false);
+  const isTerminalHidden = controlledTerminalHidden ?? internalTerminalHidden;
+  const setIsTerminalHidden = (hidden: boolean) => {
+    if (onTerminalHiddenChange) {
+      onTerminalHiddenChange(hidden);
+    } else {
+      setInternalTerminalHidden(hidden);
+    }
+  };
 
   // Use controlled or uncontrolled browser visibility
   const [internalBrowserHidden, setInternalBrowserHidden] = useState(false);
@@ -68,6 +89,31 @@ export function CodingView({
   const handleShowTerminal = () => {
     setIsTerminalHidden(false);
   };
+
+  // Track individual panel size changes for persistence
+  const sizesRef = useRef<[number, number, number]>(panelSizes ?? [25, 45, 30]);
+
+  // Keep ref in sync with controlled value
+  useEffect(() => {
+    if (panelSizes) {
+      sizesRef.current = panelSizes;
+    }
+  }, [panelSizes]);
+
+  const handleTerminalResize = useCallback((panelSize: { asPercentage: number }) => {
+    sizesRef.current = [panelSize.asPercentage, sizesRef.current[1], sizesRef.current[2]];
+    onPanelSizesChange?.([...sizesRef.current]);
+  }, [onPanelSizesChange]);
+
+  const handleEditorResize = useCallback((panelSize: { asPercentage: number }) => {
+    sizesRef.current = [sizesRef.current[0], panelSize.asPercentage, sizesRef.current[2]];
+    onPanelSizesChange?.([...sizesRef.current]);
+  }, [onPanelSizesChange]);
+
+  const handleBrowserResize = useCallback((panelSize: { asPercentage: number }) => {
+    sizesRef.current = [sizesRef.current[0], sizesRef.current[1], panelSize.asPercentage];
+    onPanelSizesChange?.([...sizesRef.current]);
+  }, [onPanelSizesChange]);
 
   // Move terminal from terminalSlotRef to visibleSlot
   const moveTerminalToVisible = useCallback(() => {
@@ -140,7 +186,12 @@ export function CodingView({
         {/* Terminals Panel - Conditionally rendered */}
         {!isTerminalHidden && (
           <>
-            <Panel defaultSize={25} minSize={15} className="coding-panel">
+            <Panel
+              defaultSize={panelSizes && panelSizes[0] > 0 ? panelSizes[0] : 25}
+              minSize={15}
+              className="coding-panel"
+              onResize={handleTerminalResize}
+            >
               <TerminalsPanel onHide={handleHideTerminal}>
                 <div ref={visibleSlotRef} className="h-full" />
               </TerminalsPanel>
@@ -150,7 +201,16 @@ export function CodingView({
         )}
 
         {/* Web IDE Panel */}
-        <Panel defaultSize={isTerminalHidden && isBrowserHidden ? 100 : isTerminalHidden ? 55 : isBrowserHidden ? 75 : 45} minSize={20} className="coding-panel">
+        <Panel
+          defaultSize={
+            panelSizes && panelSizes[1] > 0
+              ? panelSizes[1]
+              : isTerminalHidden && isBrowserHidden ? 100 : isTerminalHidden ? 55 : isBrowserHidden ? 75 : 45
+          }
+          minSize={20}
+          className="coding-panel"
+          onResize={handleEditorResize}
+        >
           <WebIDEErrorBoundary>
             <WebIDEPanel
               directory={app.path}
@@ -168,7 +228,12 @@ export function CodingView({
         {!isBrowserHidden && (
           <>
             <Separator className="coding-separator" />
-            <Panel defaultSize={isTerminalHidden ? 45 : 30} minSize={15} className="coding-panel">
+            <Panel
+              defaultSize={panelSizes && panelSizes[2] > 0 ? panelSizes[2] : isTerminalHidden ? 45 : 30}
+              minSize={15}
+              className="coding-panel"
+              onResize={handleBrowserResize}
+            >
               <BrowserPreviewPanel
                 url={app.addresses?.[0] || ''}
                 appId={app.id}

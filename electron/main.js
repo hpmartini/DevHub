@@ -41,6 +41,7 @@ function createWindow() {
       contextIsolation: true,
       sandbox: false, // Required for some native modules
       preload: path.join(__dirname, 'preload.js'),
+      backgroundThrottling: false, // Prevent throttling of terminals/iframes when tabs are hidden
     },
     show: false, // Don't show until ready
   });

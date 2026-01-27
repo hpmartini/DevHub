@@ -255,19 +255,31 @@ export const XTerminal: React.FC<XTerminalProps> = ({
       // Check if terminal is valid (not just truthy - it might be a stale reference)
       if (isTerminalValid(tab.terminal)) return;
 
-      // If tab has stale terminal reference, dispose it first
+      // Check if we have an existing WebSocket that's still alive (from shared state persistence)
+      const hasLiveWebSocket = tab.ws && tab.ws.readyState === WebSocket.OPEN;
+
+      // If tab has stale terminal reference, dispose it but preserve WebSocket if alive
       if (tab.terminal) {
         try {
           tab.terminal.dispose();
         } catch {
           // Ignore dispose errors on stale terminals
         }
-        // Clear the stale reference
-        setTabs((prev) =>
-          prev.map((t) =>
-            t.id === tabId ? { ...t, terminal: null, fitAddon: null, ws: null } : t
-          )
-        );
+        // Clear the stale terminal reference but keep WebSocket if it's still connected
+        if (!hasLiveWebSocket) {
+          setTabs((prev) =>
+            prev.map((t) =>
+              t.id === tabId ? { ...t, terminal: null, fitAddon: null, ws: null } : t
+            )
+          );
+        } else {
+          // Keep WebSocket, just clear terminal
+          setTabs((prev) =>
+            prev.map((t) =>
+              t.id === tabId ? { ...t, terminal: null, fitAddon: null } : t
+            )
+          );
+        }
       }
 
       // Find the container for this specific tab
@@ -315,65 +327,123 @@ export const XTerminal: React.FC<XTerminalProps> = ({
       terminal.open(container);
       fitAddon.fit();
 
-      // Build WebSocket URL using helper function
-      let wsUrl: string;
-      try {
-        wsUrl = buildWebSocketUrl(tab.sessionId, cwd, terminal.cols, terminal.rows, tab);
-      } catch (error) {
-        console.error('Failed to build WebSocket URL:', error);
-        terminal.write('\x1b[1;31mError: Failed to create terminal session\x1b[0m\r\n');
-        return;
-      }
+      // Check if we can reuse an existing WebSocket connection
+      let ws: WebSocket;
+      if (hasLiveWebSocket && tab.ws) {
+        // Reuse existing WebSocket - just rewire the message handler to new terminal
+        ws = tab.ws;
+        terminal.write('\x1b[2m# Reconnected to existing session\x1b[0m\r\n');
 
-      const ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        setTabs((prev) =>
-          prev.map((t) =>
-            t.id === tabId ? { ...t, connected: true } : t
-          )
-        );
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          switch (data.type) {
-            case 'output':
-              terminal.write(data.data);
-              break;
-            case 'connected':
-              terminal.write(`\x1b[2m# Connected to ${data.shell} (PID: ${data.pid})\x1b[0m\r\n`);
-              break;
-            case 'exit':
-              terminal.write(`\r\n\x1b[2m# Process exited (code: ${data.exitCode})\x1b[0m\r\n`);
-              setTabs((prev) =>
-                prev.map((t) =>
-                  t.id === tabId ? { ...t, connected: false } : t
-                )
-              );
-              break;
-            case 'error':
-              terminal.write(`\x1b[31mError: ${data.message}\x1b[0m\r\n`);
-              break;
+        // Replace the onmessage handler to use new terminal instance
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+              case 'output':
+                terminal.write(data.data);
+                break;
+              case 'connected':
+                terminal.write(`\x1b[2m# Connected to ${data.shell} (PID: ${data.pid})\x1b[0m\r\n`);
+                break;
+              case 'exit':
+                terminal.write(`\r\n\x1b[2m# Process exited (code: ${data.exitCode})\x1b[0m\r\n`);
+                setTabs((prev) =>
+                  prev.map((t) =>
+                    t.id === tabId ? { ...t, connected: false } : t
+                  )
+                );
+                break;
+              case 'error':
+                terminal.write(`\x1b[31mError: ${data.message}\x1b[0m\r\n`);
+                break;
+            }
+          } catch {
+            // Raw output
+            terminal.write(event.data);
           }
-        } catch {
-          // Raw output
-          terminal.write(event.data);
-        }
-      };
+        };
 
-      ws.onclose = () => {
-        setTabs((prev) =>
-          prev.map((t) =>
-            t.id === tabId ? { ...t, connected: false } : t
-          )
+        ws.onclose = () => {
+          setTabs((prev) =>
+            prev.map((t) =>
+              t.id === tabId ? { ...t, connected: false } : t
+            )
+          );
+        };
+
+        ws.onerror = () => {
+          terminal.write('\x1b[31mWebSocket connection error\x1b[0m\r\n');
+        };
+
+        // Send resize to sync dimensions with PTY
+        ws.send(
+          JSON.stringify({
+            type: 'resize',
+            cols: terminal.cols,
+            rows: terminal.rows,
+          })
         );
-      };
+      } else {
+        // Create new WebSocket connection
+        let wsUrl: string;
+        try {
+          wsUrl = buildWebSocketUrl(tab.sessionId, cwd, terminal.cols, terminal.rows, tab);
+        } catch (error) {
+          console.error('Failed to build WebSocket URL:', error);
+          terminal.write('\x1b[1;31mError: Failed to create terminal session\x1b[0m\r\n');
+          return;
+        }
 
-      ws.onerror = () => {
-        terminal.write('\x1b[31mWebSocket connection error\x1b[0m\r\n');
-      };
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          setTabs((prev) =>
+            prev.map((t) =>
+              t.id === tabId ? { ...t, connected: true } : t
+            )
+          );
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+              case 'output':
+                terminal.write(data.data);
+                break;
+              case 'connected':
+                terminal.write(`\x1b[2m# Connected to ${data.shell} (PID: ${data.pid})\x1b[0m\r\n`);
+                break;
+              case 'exit':
+                terminal.write(`\r\n\x1b[2m# Process exited (code: ${data.exitCode})\x1b[0m\r\n`);
+                setTabs((prev) =>
+                  prev.map((t) =>
+                    t.id === tabId ? { ...t, connected: false } : t
+                  )
+                );
+                break;
+              case 'error':
+                terminal.write(`\x1b[31mError: ${data.message}\x1b[0m\r\n`);
+                break;
+            }
+          } catch {
+            // Raw output
+            terminal.write(event.data);
+          }
+        };
+
+        ws.onclose = () => {
+          setTabs((prev) =>
+            prev.map((t) =>
+              t.id === tabId ? { ...t, connected: false } : t
+            )
+          );
+        };
+
+        ws.onerror = () => {
+          terminal.write('\x1b[31mWebSocket connection error\x1b[0m\r\n');
+        };
+      }
 
       // Send terminal input to WebSocket
       terminal.onData((data) => {
@@ -477,11 +547,34 @@ export const XTerminal: React.FC<XTerminalProps> = ({
     };
   }, []); // Empty deps - observer created once on mount, uses refs for current values
 
-  // Cleanup on unmount - dispose terminals when component is truly unmounted
-  // (e.g., when switching to a different app, not when switching views)
+  // Track if we're using shared state (per-app persistence mode)
+  const isUsingSharedState = Boolean(sharedState && sharedActions);
+  const isUsingSharedStateRef = useRef(isUsingSharedState);
+  useEffect(() => {
+    isUsingSharedStateRef.current = isUsingSharedState;
+  }, [isUsingSharedState]);
+
+  // Cleanup on unmount - dispose terminals ONLY when NOT using shared state
+  // When using shared state, terminals are managed by the per-app state and should persist
+  // across component unmount/remount (e.g., when switching between apps)
   useEffect(() => {
     return () => {
-      // Use ref to get current tabs without dependency issues
+      // Don't cleanup if using shared state - terminals should persist in the per-app Map
+      // They will be cleaned up when explicitly closed via closeTab or when the app is removed
+      if (isUsingSharedStateRef.current) {
+        // Just detach xterm from DOM without killing the WebSocket connection
+        const currentTabs = tabsRef.current;
+        currentTabs.forEach((tab) => {
+          // Detach terminal from DOM but keep WebSocket alive
+          if (tab.terminal) {
+            // Don't dispose - just let React remove the DOM element
+            // The terminal instance and WebSocket stay alive in shared state
+          }
+        });
+        return;
+      }
+
+      // Only cleanup when NOT using shared state (local mode)
       const currentTabs = tabsRef.current;
       currentTabs.forEach((tab) => {
         tab.ws?.close();
@@ -730,11 +823,11 @@ export const XTerminal: React.FC<XTerminalProps> = ({
 
       {/* Terminal content area */}
       <div ref={terminalAreaRef} className="flex-1 relative overflow-hidden">
-        {/* Logs view (output only) */}
+        {/* Logs view (output only) - use visibility to prevent throttling */}
         <div
           ref={logsContainerRef}
           className={`absolute inset-0 overflow-y-auto scrollbar-hide font-mono text-xs md:text-sm p-2 ${
-            showLogsTab && !activeTabId ? 'block' : 'hidden'
+            showLogsTab && !activeTabId ? 'visible' : 'invisible pointer-events-none'
           }`}
           style={{ backgroundColor: '#0a0a0f' }}
         >
@@ -776,13 +869,13 @@ export const XTerminal: React.FC<XTerminalProps> = ({
           )}
         </div>
 
-        {/* XTerm containers - one per tab for isolation */}
+        {/* XTerm containers - one per tab for isolation, use visibility to prevent throttling */}
         {tabs.map((tab) => (
           <div
             key={tab.id}
             data-terminal-id={tab.id}
             className={`absolute inset-0 p-1 ${
-              activeTabId === tab.id ? 'block' : 'hidden'
+              activeTabId === tab.id ? 'visible' : 'invisible pointer-events-none'
             }`}
             style={{ backgroundColor: '#0a0a0f' }}
           />

@@ -114,6 +114,8 @@ export type EditorType = 'monaco' | 'code-server';
 export type DevToolsTab = 'console' | 'network';
 export type ConsoleFilter = 'all' | 'log' | 'warn' | 'error';
 
+export type ViewMode = 'details' | 'coding';
+
 export interface PerAppViewState {
   // Terminal state (tabs array is not stored here due to XTerm instances)
   activeTerminalTabId: string | null;
@@ -129,6 +131,15 @@ export interface PerAppViewState {
 
   // Browser preview visibility
   isBrowserHidden: boolean;
+
+  // Per-tab view mode (Details vs Coding)
+  activeView: ViewMode;
+
+  // CodingView panel sizes [terminal, editor, browser] as percentages, null = use defaults
+  panelSizes: [number, number, number] | null;
+
+  // Whether the terminal panel is hidden in CodingView
+  isTerminalHidden: boolean;
 }
 
 export const DEFAULT_PER_APP_STATE: PerAppViewState = {
@@ -139,6 +150,9 @@ export const DEFAULT_PER_APP_STATE: PerAppViewState = {
   devToolsTab: 'console',
   consoleFilter: 'all',
   isBrowserHidden: false,
+  activeView: 'details',
+  panelSizes: null,
+  isTerminalHidden: false,
 };
 
 export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcuts = {
