@@ -128,14 +128,43 @@ function scanDirectoryRecursive(dirPath, depth, maxDepth, excludePatterns) {
 
   try {
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const hasPackageJson = entries.some(e => e.name === 'package.json' && e.isFile());
+    const composeFileName = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']
+      .find(name => entries.some(e => e.name === name && e.isFile()));
 
-    // Check if this directory is a project
-    if (entries.some(e => e.name === 'package.json' && e.isFile())) {
+    // Check if this directory is a Node project
+    if (hasPackageJson) {
       const project = scanProject(dirPath);
       if (project) {
+        // If it also has a compose file, attach dockerConfig
+        if (composeFileName) {
+          project.dockerConfig = {
+            composeFile: composeFileName,
+            services: [], // Will be populated on demand
+          };
+        }
         projects.push(project);
         return projects; // Don't scan subdirectories of a project
       }
+    }
+
+    // Check if this directory is a Docker-only project (no package.json)
+    if (!hasPackageJson && composeFileName) {
+      const dockerProject = {
+        id: generateProjectId(dirPath),
+        name: path.basename(dirPath),
+        path: dirPath,
+        type: 'docker',
+        port: 0,
+        startCommand: 'docker compose up',
+        detectedFramework: 'Docker Compose',
+        dockerConfig: {
+          composeFile: composeFileName,
+          services: [],
+        },
+      };
+      projects.push(dockerProject);
+      return projects;
     }
 
     // Scan subdirectories

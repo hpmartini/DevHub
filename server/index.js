@@ -37,6 +37,8 @@ import { applicationsRepository } from './db/repositories/applicationsRepository
 import { terminalSessionManager } from './services/TerminalSessionManager.js';
 import { settingsService } from './services/settingsService.js';
 import { ideService } from './services/ideService.js';
+import { dockerComposeService } from './services/DockerComposeService.js';
+import { systemHealthService } from './services/systemHealthService.js';
 import { injectLogger, removeLogger, checkLoggerStatus } from './services/loggerInjection.js';
 
 // Load environment variables from .env.local
@@ -127,6 +129,7 @@ const startAppSchema = z.object({
   path: pathSchema,
   command: commandSchema,
   port: z.number().int().min(1).max(65535).optional(),
+  frameworkType: z.string().optional(),
 });
 
 const configUpdateSchema = z.object({
@@ -609,6 +612,28 @@ app.put('/api/settings/name/:id', validateParams(idSchema), (req, res) => {
       // Clear custom name
       settingsService.setName(id, null);
       res.json({ id, name: null });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /api/settings/command/:id
+ * Set custom start command for an app
+ */
+app.put('/api/settings/command/:id', validateParams(idSchema), (req, res) => {
+  try {
+    const { id } = req.params;
+    const { command } = req.body;
+
+    if (command && typeof command === 'string' && command.trim().length > 0) {
+      settingsService.setCommand(id, command.trim());
+      res.json({ id, command: command.trim() });
+    } else {
+      // Clear custom command
+      settingsService.setCommand(id, null);
+      res.json({ id, command: null });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1381,6 +1406,80 @@ app.post('/api/scan', (req, res) => {
 });
 
 // ============================================
+// System Health Endpoints
+// ============================================
+
+/**
+ * GET /api/system/health
+ * Get full system health report
+ */
+app.get('/api/system/health', async (req, res) => {
+  try {
+    const config = getConfig();
+    const report = await systemHealthService.getFullHealthReport(config.directories);
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/apps/:id/health
+ * Get project-level health checks
+ */
+app.get('/api/apps/:id/health', validateParams(idSchema), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const apps = scanAllDirectories();
+    const app = apps.find(a => a.id === id);
+
+    if (!app) {
+      return res.status(404).json({ error: 'App not found' });
+    }
+
+    const [staleDeps, audit, outdated] = await Promise.all([
+      systemHealthService.checkStaleNodeModules(app.path),
+      systemHealthService.checkSecurityAudit(app.path),
+      systemHealthService.checkOutdatedDeps(app.path),
+    ]);
+
+    res.json({ staleDeps, audit, outdated });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/system/update-node
+ * Trigger Node.js update
+ */
+app.post('/api/system/update-node', processLimiter, async (req, res) => {
+  try {
+    const { version } = req.body;
+    if (!version || typeof version !== 'string') {
+      return res.status(400).json({ error: 'Version is required' });
+    }
+    const result = await systemHealthService.updateNode(version);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/system/update-npm
+ * Trigger npm update
+ */
+app.post('/api/system/update-npm', processLimiter, async (req, res) => {
+  try {
+    const result = await systemHealthService.updateNpm();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // Process Management Endpoints
 // ============================================
 
@@ -1391,9 +1490,9 @@ app.post('/api/scan', (req, res) => {
 app.post('/api/apps/:id/start', processLimiter, validateParams(idSchema), validate(startAppSchema), (req, res) => {
   try {
     const { id } = req.params;
-    const { path: appPath, command, port } = req.body;
+    const { path: appPath, command, port, frameworkType } = req.body;
 
-    const result = startProcess(id, appPath, command, port);
+    const result = startProcess(id, appPath, command, port, frameworkType);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -1425,6 +1524,33 @@ app.post('/api/apps/:id/restart', processLimiter, validateParams(idSchema), asyn
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/apps/:id/docker/status
+ * Get Docker container status for a compose project
+ */
+app.get('/api/apps/:id/docker/status', validateParams(idSchema), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Find the app to get its path
+    const apps = scanAllDirectories();
+    const app = apps.find(a => a.id === id);
+
+    if (!app) {
+      return res.status(404).json({ error: 'App not found' });
+    }
+
+    if (!app.dockerConfig) {
+      return res.status(400).json({ error: 'App is not a Docker project' });
+    }
+
+    const containers = await dockerComposeService.getContainerStatus(app.path);
+    res.json({ containers });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

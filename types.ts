@@ -9,7 +9,7 @@ export enum AppStatus {
   RESTARTING = 'RESTARTING'
 }
 
-export type AppType = 'vite' | 'next' | 'node' | 'static' | 'unknown';
+export type AppType = 'vite' | 'next' | 'node' | 'static' | 'docker' | 'unknown';
 
 export interface AppConfig {
   id: string;
@@ -20,6 +20,7 @@ export interface AppConfig {
   addresses?: string[];
   startCommand?: string;
   detectedFramework?: string;
+  dockerConfig?: { composeFile: string; services: string[] };
   status: AppStatus;
   uptime: number; // seconds
   logs: string[];
@@ -37,6 +38,21 @@ export interface SystemStats {
   runningApps: number;
   totalCpuUsage: number;
   totalMemoryUsage: number;
+}
+
+export interface SystemHealthReport {
+  node: { current: string; latest: string; isOutdated: boolean; manager: 'nvm' | 'volta' | 'asdf' | 'system' };
+  npm: { current: string; latest: string; isOutdated: boolean };
+  git: { version: string | null; available: boolean };
+  docker: { available: boolean; version: string | null; daemonRunning: boolean };
+  disk: { path: string; availableGB: number; isLow: boolean }[];
+  timestamp: string;
+}
+
+export interface ProjectHealthReport {
+  staleDeps: { stale: boolean; reason: string };
+  audit: { total: number; critical: number; high: number; moderate: number; low: number };
+  outdated: { name: string; current: string; wanted: string; latest: string; isMajor: boolean }[];
 }
 
 export interface IDE {

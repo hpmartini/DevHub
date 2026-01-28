@@ -1,4 +1,4 @@
-import { AppConfig, AppStatus, KeyboardShortcuts } from '../types';
+import { AppConfig, AppStatus, KeyboardShortcuts, SystemHealthReport, ProjectHealthReport } from '../types';
 import { DEFAULT_APP_START_PORT } from '../constants';
 import { API_BASE_URL } from '../utils/apiConfig';
 
@@ -54,11 +54,11 @@ export async function fetchApps(): Promise<AppConfig[]> {
 /**
  * Start an app process
  */
-export async function startApp(id: string, appPath: string, command: string, port?: number): Promise<{ pid: number; status: string }> {
+export async function startApp(id: string, appPath: string, command: string, port?: number, frameworkType?: string): Promise<{ pid: number; status: string }> {
   const response = await fetch(`${API_BASE}/apps/${id}/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: appPath, command, port }),
+    body: JSON.stringify({ path: appPath, command, port, frameworkType }),
   });
 
   if (!response.ok) {
@@ -403,6 +403,7 @@ export interface AppSettings {
   archived: string[];
   customPorts: Record<string, number>;
   customNames: Record<string, string>;
+  customCommands: Record<string, string>;
   preferredIDEs?: Record<string, string>;
   favoritesSortMode: FavoritesSortMode;
   version: number;
@@ -420,6 +421,7 @@ export async function fetchSettings(): Promise<AppSettings> {
       archived: [],
       customPorts: {},
       customNames: {},
+      customCommands: {},
       favoritesSortMode: 'manual',
       version: 1,
     };
@@ -528,6 +530,21 @@ export async function updateName(id: string, name: string | null): Promise<{ id:
   });
   if (!response.ok) {
     throw new Error('Failed to update name');
+  }
+  return response.json();
+}
+
+/**
+ * Set custom start command for an app
+ */
+export async function updateCommand(id: string, command: string | null): Promise<{ id: string; command: string | null }> {
+  const response = await fetch(`${API_BASE}/settings/command/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ command }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update command');
   }
   return response.json();
 }
@@ -809,6 +826,62 @@ export async function validateApiKey(provider: string, key: string): Promise<{ v
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to validate API key');
+  }
+  return response.json();
+}
+
+// ============================================
+// System Health API
+// ============================================
+
+/**
+ * Fetch system health report (Node, npm, Git, Docker, disk)
+ */
+export async function fetchSystemHealth(): Promise<SystemHealthReport> {
+  const response = await fetch(`${API_BASE}/system/health`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch system health');
+  }
+  return response.json();
+}
+
+/**
+ * Fetch project-level health report
+ */
+export async function fetchAppHealth(id: string): Promise<ProjectHealthReport> {
+  const response = await fetch(`${API_BASE}/apps/${id}/health`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch app health');
+  }
+  return response.json();
+}
+
+/**
+ * Update Node.js version via detected manager
+ */
+export async function updateNodeVersion(version: string): Promise<{ success: boolean; instructions?: string }> {
+  const response = await fetch(`${API_BASE}/system/update-node`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update Node');
+  }
+  return response.json();
+}
+
+/**
+ * Update npm to latest version
+ */
+export async function updateNpmVersion(): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/system/update-npm`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update npm');
   }
   return response.json();
 }

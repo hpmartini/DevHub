@@ -19,6 +19,7 @@ import {
   updateArchive,
   updatePort,
   updateName,
+  updateCommand,
   configureAllPorts,
   AppSettings,
   FavoritesSortMode,
@@ -85,6 +86,7 @@ interface UseAppsReturn {
   handleToggleArchive: (id: string) => Promise<void>;
   handleInstallDeps: (id: string) => Promise<void>;
   handleSetPort: (id: string, port: number) => Promise<void>;
+  handleSetCommand: (id: string, command: string) => Promise<void>;
   handleRename: (id: string, newName: string) => Promise<void>;
   handleReorderFavorites: (newOrder: string[]) => Promise<void>;
   handleSetFavoritesSortMode: (mode: FavoritesSortMode) => Promise<void>;
@@ -127,6 +129,8 @@ export function useApps(): UseAppsReturn {
         name: fetchedSettings.customNames[app.id] ?? app.name,
         isFavorite: fetchedSettings.favorites.includes(app.id),
         isArchived: fetchedSettings.archived.includes(app.id),
+        // Apply custom command if available
+        startCommand: fetchedSettings.customCommands?.[app.id] ?? app.startCommand,
         // Apply custom port if available
         port: fetchedSettings.customPorts[app.id] ?? app.port,
         addresses: fetchedSettings.customPorts[app.id]
@@ -248,7 +252,7 @@ export function useApps(): UseAppsReturn {
 
     try {
       // Pass the configured port to the backend
-      await startApp(id, app.path, app.startCommand || 'npm run dev', app.port);
+      await startApp(id, app.path, app.startCommand || 'npm run dev', app.port, app.type);
       // Status will be updated via SSE
     } catch (err) {
       console.error('Failed to start app:', err);
@@ -527,6 +531,33 @@ export function useApps(): UseAppsReturn {
     }
   }, [apps]);
 
+  const handleSetCommand = useCallback(async (id: string, command: string) => {
+    const currentApp = apps.find((a) => a.id === id);
+    const oldCommand = currentApp?.startCommand;
+
+    // Optimistically update UI
+    setApps((currentApps) =>
+      currentApps.map((app) =>
+        app.id === id ? { ...app, startCommand: command } : app
+      )
+    );
+
+    // Persist to backend
+    try {
+      await updateCommand(id, command);
+      toast.success(`Command updated`);
+    } catch (err) {
+      console.error('Failed to update command:', err);
+      // Revert on failure
+      setApps((currentApps) =>
+        currentApps.map((app) =>
+          app.id === id ? { ...app, startCommand: oldCommand ?? app.startCommand } : app
+        )
+      );
+      toast.error('Failed to update command');
+    }
+  }, [apps]);
+
   const handleRename = useCallback(async (id: string, newName: string) => {
     const currentApp = apps.find((a) => a.id === id);
     const oldName = currentApp?.name;
@@ -659,6 +690,7 @@ export function useApps(): UseAppsReturn {
             archived: [],
             customPorts: result.configured,
             customNames: {},
+            customCommands: {},
             favoritesSortMode: 'manual',
             version: 1,
           };
@@ -701,6 +733,7 @@ export function useApps(): UseAppsReturn {
     handleToggleArchive,
     handleInstallDeps,
     handleSetPort,
+    handleSetCommand,
     handleRename,
     handleReorderFavorites,
     handleSetFavoritesSortMode,

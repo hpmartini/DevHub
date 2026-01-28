@@ -36,6 +36,7 @@ interface AppDetailProps {
   onOpenInBrowser: (id: string) => void;
   onInstallDeps?: (id: string) => void;
   onSetPort?: (id: string, port: number) => void;
+  onSetCommand?: (id: string, command: string) => void;
   onRename?: (id: string, newName: string) => void;
   onToggleFavorite?: (id: string) => void;
   onToggleArchive?: (id: string) => void;
@@ -60,6 +61,7 @@ export const AppDetail: React.FC<AppDetailProps> = ({
   onOpenInBrowser,
   onInstallDeps,
   onSetPort,
+  onSetCommand,
   onRename,
   onToggleFavorite,
   onToggleArchive,
@@ -86,6 +88,8 @@ export const AppDetail: React.FC<AppDetailProps> = ({
   const [portValue, setPortValue] = useState('');
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [nameValue, setNameValue] = useState('');
+  const [showCommandEditor, setShowCommandEditor] = useState(false);
+  const [commandValue, setCommandValue] = useState('');
 
   // Ref for the single terminal container that holds the XTerminal
   // This container is positioned absolutely and moved between views using CSS
@@ -144,6 +148,15 @@ export const AppDetail: React.FC<AppDetailProps> = ({
       onSetPort(app.id, port);
       setShowPortEditor(false);
       setPortValue('');
+    }
+  };
+
+  const handleCommandSubmit = () => {
+    const trimmedCommand = commandValue.trim();
+    if (trimmedCommand && trimmedCommand !== (app.startCommand || 'npm run dev') && onSetCommand) {
+      onSetCommand(app.id, trimmedCommand);
+      setShowCommandEditor(false);
+      setCommandValue('');
     }
   };
 
@@ -303,9 +316,47 @@ export const AppDetail: React.FC<AppDetailProps> = ({
                   {/* Start Command */}
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 text-xs">Command:</span>
-                    <code className="text-gray-300 text-sm font-mono bg-gray-900/50 px-2 py-0.5 rounded">
-                      {app.startCommand || 'npm run dev'}
-                    </code>
+                    {showCommandEditor ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={commandValue}
+                          onChange={(e) => setCommandValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleCommandSubmit();
+                            if (e.key === 'Escape') setShowCommandEditor(false);
+                          }}
+                          placeholder={app.startCommand || 'npm run dev'}
+                          className="w-48 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-sm font-mono focus:outline-none focus:border-blue-500"
+                          autoFocus
+                        />
+                        <button
+                          onClick={handleCommandSubmit}
+                          className="p-1 text-emerald-400 hover:bg-gray-700 rounded"
+                        >
+                          <Check size={14} />
+                        </button>
+                        <button
+                          onClick={() => setShowCommandEditor(false)}
+                          className="p-1 text-gray-400 hover:bg-gray-700 rounded"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setCommandValue(app.startCommand || 'npm run dev');
+                          setShowCommandEditor(true);
+                        }}
+                        className="flex items-center gap-1 text-gray-300 text-sm font-mono bg-gray-900/50 px-2 py-0.5 rounded hover:bg-gray-900 hover:text-white transition-colors cursor-pointer"
+                        title="Click to edit start command"
+                        disabled={!onSetCommand}
+                      >
+                        {app.startCommand || 'npm run dev'}
+                        {onSetCommand && <Settings2 size={12} className="opacity-50" />}
+                      </button>
+                    )}
                   </div>
 
                   {/* Port & Addresses */}

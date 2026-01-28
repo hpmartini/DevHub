@@ -6,24 +6,21 @@ export interface Alert {
   type: 'warning' | 'info' | 'success' | 'error';
   title: string;
   message: string;
+  actionLabel?: string;
+  actionId?: string;
 }
 
 interface SystemAlertsProps {
   alerts?: Alert[];
+  onAction?: (actionId: string, data?: Record<string, unknown>) => void;
 }
 
 const defaultAlerts: Alert[] = [
   {
     id: '1',
-    type: 'warning',
-    title: 'Node Update Available',
-    message: 'Version v20.10.0 is available. Current: v18.17.0',
-  },
-  {
-    id: '2',
     type: 'info',
-    title: 'System Idle',
-    message: 'Resources are optimized.',
+    title: 'Loading...',
+    message: 'Checking system health...',
   },
 ];
 
@@ -58,7 +55,7 @@ const alertStyles = {
   },
 };
 
-export const SystemAlerts: React.FC<SystemAlertsProps> = ({ alerts = defaultAlerts }) => {
+export const SystemAlerts: React.FC<SystemAlertsProps> = ({ alerts = defaultAlerts, onAction }) => {
   return (
     <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
       <h3 className="text-lg font-semibold text-gray-200 mb-4">System Alerts</h3>
@@ -72,13 +69,21 @@ export const SystemAlerts: React.FC<SystemAlertsProps> = ({ alerts = defaultAler
               className={`p-3 border rounded-lg flex gap-3 ${style.container}`}
             >
               <Icon className={`shrink-0 ${style.iconClass}`} size={20} />
-              <div>
+              <div className="flex-1">
                 <div className={`text-sm font-medium ${style.titleClass}`}>
                   {alert.title}
                 </div>
                 <div className={`text-xs mt-1 ${style.messageClass}`}>
                   {alert.message}
                 </div>
+                {alert.actionLabel && alert.actionId && alert.actionId !== 'no-action' && onAction && (
+                  <button
+                    onClick={() => onAction(alert.actionId!)}
+                    className="mt-2 text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                  >
+                    {alert.actionLabel}
+                  </button>
+                )}
               </div>
             </div>
           );

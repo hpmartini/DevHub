@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
-import { Lightbulb, ArrowUpCircle, Package, Zap, AlertTriangle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Lightbulb, ArrowUpCircle, Package, Zap, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { AppConfig, AppStatus } from '../types';
+import type { SystemHealthReport } from '../types';
 
 interface Recommendation {
   id: string;
@@ -9,11 +10,17 @@ interface Recommendation {
   message: string;
   appId?: string;
   action?: string;
+  actionCallback?: string; // Name of the callback to invoke
+  details?: string; // Expandable details text
 }
 
 interface RecommendationsProps {
   apps: AppConfig[];
   onAnalyzeApp?: (id: string) => void;
+  onFixPortConflicts?: () => void;
+  onReinstallDeps?: (appId: string) => void;
+  onRestartApp?: (appId: string) => void;
+  systemHealth?: SystemHealthReport | null;
 }
 
 const typeStyles = {
@@ -39,7 +46,16 @@ const typeStyles = {
   },
 };
 
-export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyzeApp }) => {
+export const Recommendations: React.FC<RecommendationsProps> = ({
+  apps,
+  onAnalyzeApp,
+  onFixPortConflicts,
+  onReinstallDeps,
+  onRestartApp,
+  systemHealth,
+}) => {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const recommendations = useMemo(() => {
     const recs: Recommendation[] = [];
 
@@ -55,16 +71,21 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyz
         message: `${unanalyzedApps.length} app(s) haven't been analyzed yet. Run AI Config to optimize startup commands.`,
         appId: unanalyzedApps[0].id,
         action: 'Analyze',
+        actionCallback: 'analyze',
       });
     }
 
     // Check for apps with default ports that might conflict
     const portCounts = new Map<number, string[]>();
+    const portAppIds = new Map<number, string[]>();
     apps.forEach((app) => {
       if (app.port) {
         const existing = portCounts.get(app.port) || [];
         existing.push(app.name);
         portCounts.set(app.port, existing);
+        const ids = portAppIds.get(app.port) || [];
+        ids.push(app.id);
+        portAppIds.set(app.port, ids);
       }
     });
     portCounts.forEach((appNames, port) => {
@@ -74,6 +95,8 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyz
           type: 'security',
           title: 'Port Conflict Detected',
           message: `Port ${port} is configured for multiple apps: ${appNames.join(', ')}. Consider setting custom ports.`,
+          action: 'Auto-fix Ports',
+          actionCallback: 'fix-ports',
         });
       }
     });
@@ -90,6 +113,8 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyz
         title: 'High CPU Usage',
         message: `${app.name} is using significant CPU resources. Consider optimizing or restarting.`,
         appId: app.id,
+        action: 'Restart',
+        actionCallback: 'restart',
       });
     });
 
@@ -102,6 +127,51 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyz
         title: 'Fix App Errors',
         message: `${errorApps.length} app(s) have errors. Try reinstalling dependencies or checking logs.`,
         appId: errorApps[0].id,
+        action: 'Reinstall Deps',
+        actionCallback: 'reinstall',
+      });
+    }
+
+    // System-level recommendations from health data
+    if (systemHealth) {
+      if (systemHealth.node.isOutdated) {
+        const manager = systemHealth.node.manager;
+        let details = '';
+        if (manager === 'nvm') {
+          details = `Run: nvm install ${systemHealth.node.latest} && nvm alias default ${systemHealth.node.latest}`;
+        } else if (manager === 'volta') {
+          details = `Run: volta install node@${systemHealth.node.latest}`;
+        } else {
+          details = `Download from https://nodejs.org or run: brew upgrade node`;
+        }
+        recs.push({
+          id: 'node-update',
+          type: 'update',
+          title: `Update Node to v${systemHealth.node.latest}`,
+          message: `Currently running v${systemHealth.node.current} (${manager}). Latest LTS is v${systemHealth.node.latest}.`,
+          details,
+        });
+      }
+
+      if (systemHealth.npm.isOutdated) {
+        recs.push({
+          id: 'npm-update',
+          type: 'update',
+          title: `Update npm to v${systemHealth.npm.latest}`,
+          message: `Currently running v${systemHealth.npm.current}.`,
+          details: 'Run: npm install -g npm@latest',
+        });
+      }
+
+      systemHealth.disk.forEach((d) => {
+        if (d.isLow) {
+          recs.push({
+            id: `disk-low-${d.path}`,
+            type: 'security',
+            title: 'Low Disk Space',
+            message: `${d.path} has only ${d.availableGB} GB available. Free up space to avoid build failures.`,
+          });
+        }
       });
     }
 
@@ -115,8 +185,25 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyz
       });
     }
 
-    return recs.slice(0, 4); // Limit to 4 recommendations
-  }, [apps]);
+    return recs.slice(0, 6); // Limit to 6 recommendations
+  }, [apps, systemHealth]);
+
+  const handleAction = (rec: Recommendation) => {
+    switch (rec.actionCallback) {
+      case 'analyze':
+        if (rec.appId && onAnalyzeApp) onAnalyzeApp(rec.appId);
+        break;
+      case 'fix-ports':
+        if (onFixPortConflicts) onFixPortConflicts();
+        break;
+      case 'restart':
+        if (rec.appId && onRestartApp) onRestartApp(rec.appId);
+        break;
+      case 'reinstall':
+        if (rec.appId && onReinstallDeps) onReinstallDeps(rec.appId);
+        break;
+    }
+  };
 
   return (
     <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
@@ -128,6 +215,7 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyz
         {recommendations.map((rec) => {
           const style = typeStyles[rec.type];
           const Icon = style.icon;
+          const isExpanded = expandedId === rec.id;
           return (
             <div
               key={rec.id}
@@ -138,13 +226,29 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ apps, onAnalyz
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-200">{rec.title}</div>
                   <div className="text-xs text-gray-400 mt-1">{rec.message}</div>
-                  {rec.action && rec.appId && onAnalyzeApp && (
-                    <button
-                      onClick={() => onAnalyzeApp(rec.appId!)}
-                      className="mt-2 text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-                    >
-                      {rec.action}
-                    </button>
+                  <div className="flex items-center gap-2 mt-2">
+                    {rec.action && rec.actionCallback && (
+                      <button
+                        onClick={() => handleAction(rec)}
+                        className="text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                      >
+                        {rec.action}
+                      </button>
+                    )}
+                    {rec.details && (
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : rec.id)}
+                        className="text-xs px-2 py-1 text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                      >
+                        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                        {isExpanded ? 'Hide' : 'Details'}
+                      </button>
+                    )}
+                  </div>
+                  {isExpanded && rec.details && (
+                    <div className="mt-2 p-2 bg-gray-900/50 rounded text-xs font-mono text-gray-400">
+                      {rec.details}
+                    </div>
                   )}
                 </div>
               </div>

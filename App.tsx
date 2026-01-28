@@ -16,7 +16,7 @@ import {
   AppTabs,
   useAppTabs,
 } from './components';
-import { useApps, usePerAppState } from './hooks';
+import { useApps, usePerAppState, useSystemHealth } from './hooks';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { generateProjectUrl } from './utils/routing';
 import { KeyboardShortcuts } from './types';
@@ -47,13 +47,19 @@ function AppContent() {
     handleToggleArchive,
     handleInstallDeps,
     handleSetPort,
+    handleSetCommand,
     handleRename,
     handleReorderFavorites,
     handleSetFavoritesSortMode,
+    handleConfigureAllPorts,
     refreshApps,
     runningCount,
     totalCpu,
   } = useApps();
+
+  // System health monitoring
+  const hasDockerProjects = apps.some(app => app.type === 'docker');
+  const { health: systemHealth, alerts: systemAlerts, handleAction: handleSystemAction } = useSystemHealth(hasDockerProjects);
 
   // App tabs management
   const { tabs, activeTabId, closeTab, reorderTabs, selectTab } = useAppTabs(apps);
@@ -471,8 +477,15 @@ function AppContent() {
                 </div>
 
                 <div className="space-y-6">
-                  <Recommendations apps={apps} onAnalyzeApp={handleAnalyzeApp} />
-                  <SystemAlerts />
+                  <Recommendations
+                    apps={apps}
+                    onAnalyzeApp={handleAnalyzeApp}
+                    onFixPortConflicts={() => handleConfigureAllPorts()}
+                    onReinstallDeps={handleInstallDeps}
+                    onRestartApp={handleRestartApp}
+                    systemHealth={systemHealth}
+                  />
+                  <SystemAlerts alerts={systemAlerts} onAction={handleSystemAction} />
                 </div>
               </div>
             </div>
@@ -499,6 +512,7 @@ function AppContent() {
                       onOpenInBrowser={handleOpenInBrowser}
                       onInstallDeps={handleInstallDeps}
                       onSetPort={handleSetPort}
+                      onSetCommand={handleSetCommand}
                       onRename={handleRename}
                       onToggleFavorite={handleToggleFavorite}
                       onToggleArchive={handleToggleArchive}

@@ -18,6 +18,7 @@ const ALLOWED_COMMANDS = [
   'pnpm',
   'node',
   'bun',
+  'docker',
 ];
 
 // Allowlist of safe npm script patterns
@@ -25,6 +26,24 @@ const ALLOWED_SCRIPT_PATTERNS = [
   /^(run\s+)?(dev|start|serve|develop|preview|build|test)$/,
   /^start$/,
 ];
+
+// Allowed Docker compose subcommands
+const ALLOWED_DOCKER_COMPOSE_PATTERN = /^compose\s+(up|down|restart|build|pull|logs|ps)(\s+.*)?$/;
+
+// Port flag mapping per framework type
+const PORT_FLAGS = {
+  vite: '--port',
+  next: '-p',
+  nuxt: '--port',
+  vue: '--port',
+};
+
+/**
+ * Get the port CLI flag for a framework type, if any
+ */
+function getPortFlag(frameworkType) {
+  return PORT_FLAGS[frameworkType] || null;
+}
 
 /**
  * Validate that a command is safe to execute
@@ -36,6 +55,15 @@ function validateCommand(command) {
   // Check if base command is in allowlist
   if (!ALLOWED_COMMANDS.includes(baseCmd)) {
     throw new Error(`Command '${baseCmd}' is not allowed. Allowed: ${ALLOWED_COMMANDS.join(', ')}`);
+  }
+
+  // For Docker commands, validate compose subcommands
+  if (baseCmd === 'docker') {
+    const dockerArgs = parts.slice(1).join(' ');
+    if (!ALLOWED_DOCKER_COMPOSE_PATTERN.test(dockerArgs)) {
+      throw new Error(`Docker command '${dockerArgs}' is not allowed. Only 'compose up/down/restart/build/pull/logs/ps' are permitted.`);
+    }
+    return true; // Docker commands may contain flags with special chars, skip further checks
   }
 
   // For npm/yarn/pnpm, validate the script pattern
@@ -102,10 +130,23 @@ export function getAllProcesses() {
  * @param {string} appPath - Path to the app directory
  * @param {string} command - Command to run
  * @param {number} [port] - Optional port number to set as PORT env variable
+ * @param {string} [frameworkType] - Optional framework type for port flag injection
  */
-export function startProcess(appId, appPath, command, port) {
+export function startProcess(appId, appPath, command, port, frameworkType) {
   // Validate command before execution (security check)
   validateCommand(command);
+
+  // Inject port flag for frameworks that need CLI flags instead of PORT env
+  let effectiveCommand = command;
+  if (port && frameworkType) {
+    const portFlag = getPortFlag(frameworkType);
+    if (portFlag) {
+      // Only inject if the flag isn't already in the command
+      if (!command.includes(portFlag)) {
+        effectiveCommand = `${command} -- ${portFlag} ${port}`;
+      }
+    }
+  }
 
   // Check if already running
   if (processes.has(appId)) {
@@ -116,7 +157,7 @@ export function startProcess(appId, appPath, command, port) {
   }
 
   // Parse command safely
-  const parts = command.trim().split(/\s+/);
+  const parts = effectiveCommand.trim().split(/\s+/);
   const cmd = parts[0];
   const args = parts.slice(1);
 
@@ -124,8 +165,10 @@ export function startProcess(appId, appPath, command, port) {
   const processInfo = {
     appId,
     appPath,
-    command,
+    command: effectiveCommand,
+    originalCommand: command,
     port,
+    frameworkType,
     status: 'STARTING',
     startTime: null,
     logs: [],
@@ -344,7 +387,7 @@ export function restartProcess(appId) {
     throw new Error('Process info not found');
   }
 
-  const { appPath, command, port } = processInfo;
+  const { appPath, originalCommand, port, frameworkType } = processInfo;
 
   // Stop if running
   if (processInfo.status === 'RUNNING') {
@@ -354,7 +397,7 @@ export function restartProcess(appId) {
   // Wait a bit then start
   return new Promise((resolve) => {
     setTimeout(() => {
-      const result = startProcess(appId, appPath, command, port);
+      const result = startProcess(appId, appPath, originalCommand || processInfo.command, port, frameworkType);
       resolve(result);
     }, 1000);
   });
