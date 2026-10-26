@@ -61,7 +61,16 @@ const STATUS = {
 };
 
 const SCANHUB = 'scanhub.tail02d145.ts.net';
-const OPTS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5'];
+const OPTS = [
+  '-o',
+  'BatchMode=yes',
+  '-o',
+  'ConnectTimeout=5',
+  '-o',
+  'ForwardAgent=no',
+  '-o',
+  'ClearAllForwardings=yes',
+];
 
 describe.each([
   ['utils/meshHosts.ts', ts],
