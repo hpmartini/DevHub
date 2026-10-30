@@ -1,4 +1,3 @@
-/* global URL, console, process, fetch */
 // AC-3/4/5 check against the running worktree build (vite :3177 -> real backend :3099).
 // Picks a real cache, freezes the browser clock 11 min before it expires, then advances it.
 import { chromium } from 'playwright';
