@@ -45,7 +45,7 @@ A module with `mode` brings its own work mode, like Board or Code:
 | `keywords` | optional palette search words                                                                                                                          |
 | `scoped`   | optional; `true` adds `View <label>` to a repo group and `Show <label>` to an agent with board issues, opening `/<id>?repo=owner/name[&agent=<jobId>]` |
 
-Without the module there is no route, no toggle, no palette entry, no rail entry; `/<id>` redirects to `/agents` like any unknown path.
+Without the module there is no route, no toggle, no palette entry, no rail entry; `/<id>` redirects to `/dashboard` like any unknown path (`/` itself opens `/agents`).
 
 `ctx`:
 

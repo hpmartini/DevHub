@@ -54,7 +54,7 @@ function AppContent() {
   );
   const segment = location.pathname.slice(1);
   const knownRoute = HOST_TABS.includes(segment) || modes.some((m) => m.id === segment);
-  // Unknown paths fall back to the agents view (redirected below once modules are known)
+  // Unknown paths are redirected below once modules are known; until then show the agents view
   const activeTab = knownRoute ? segment : 'agents';
 
   const { apps, loading, settings, refreshApps } = useApps();
@@ -230,7 +230,8 @@ function AppContent() {
         }}
       />
 
-      {!knownRoute && <Navigate to="/agents" replace />}
+      {/* Unknown path, e.g. a module mode whose module is not loaded (#165): overview */}
+      {!knownRoute && <Navigate to={segment ? '/dashboard' : '/agents'} replace />}
 
       {/* TitleBar - custom titlebar with tabs and pane controls */}
       <TitleBar
