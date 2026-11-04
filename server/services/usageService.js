@@ -262,7 +262,8 @@ let oauthMemo = { at: 0, value: null };
 /** Claude Code's subscription login: macOS keychain, else the credentials file. Never logged. */
 export async function readClaudeOauth(claudeDir) {
   let raw;
-  if (process.platform === 'darwin') {
+  // A custom config dir has its own keychain entry (hashed suffix); only its credentials file is safe to read.
+  if (process.platform === 'darwin' && !process.env.CLAUDE_CONFIG_DIR) {
     try {
       ({ stdout: raw } = await execFileP(
         'security',
@@ -296,6 +297,8 @@ export async function claudeOauthLimits(
   });
   if (!res.ok) return null;
   const body = await res.json();
+  // Neither window present = unknown response shape, not "no 5h plan": let the other sources answer.
+  if (!body?.five_hour && !body?.seven_day) return null;
   const win = (w, minutes) =>
     w
       ? rateWindow(

@@ -318,6 +318,8 @@ describe('usageService - claude limits', () => {
     expect(called).toBe(false);
     const ok = async () => ({ accessToken: 'x', expiresAt: NOW + 1 });
     expect(await claudeOauthLimits({}, NOW, { readOauth: ok, fetchFn })).toBeNull();
+    const unknownShape = async () => ({ ok: true, json: async () => ({ limits: [] }) });
+    expect(await claudeOauthLimits({}, NOW, { readOauth: ok, fetchFn: unknownShape })).toBeNull();
   });
 
   it('has no limits without a source', async () => {
