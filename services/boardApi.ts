@@ -13,6 +13,7 @@ import type {
   IssueComment,
   IssueSummary,
 } from '../types';
+import type { WorkflowStart } from '../utils/issueControls';
 
 /** JSON request against the API; failures throw with the server's `error` message */
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -134,6 +135,11 @@ export function updateBoardSettings(patch: Partial<BoardSettings>): Promise<Boar
 }
 
 /** Starts the mw-board poll now; the server refuses (409) unless the fresh state offers it (#145) */
-export function sendPollGo(itemId: string): Promise<{ ok: true }> {
+export function sendPollGo(itemId: string): Promise<{ ok: true; start?: WorkflowStart }> {
   return request('/board/poll', { method: 'POST', body: JSON.stringify({ itemId }) });
+}
+
+/** Starts or wakes the issue now (`mw board go`); its label must already be set */
+export function startWorkflow(url: string): Promise<WorkflowStart> {
+  return request('/board/start', { method: 'POST', body: JSON.stringify({ url }) });
 }

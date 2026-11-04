@@ -42,7 +42,7 @@ import { usageRouter, getUsage } from './services/usageService.js';
 import { getAgentContexts, getKnownServerPids } from './services/agentContextService.js';
 import * as boardService from './services/boardService.js';
 import * as imageUpload from './services/imageUpload.js';
-import { applyGo } from './services/workflowGo.js';
+import { applyGo, startNow, workflowStartSchema } from './services/workflowGo.js';
 import {
   deriveWorkflowState,
   isWorkflowItem,
@@ -1621,6 +1621,15 @@ async function workflowContext(itemId, { refresh = false } = {}) {
   const status = board.statusField.options.find((o) => o.id === item.statusOptionId)?.name ?? null;
   return { source, item, state: deriveWorkflowState(item, status) };
 }
+
+// Umsetzen in the issue dialog: start the issue now (mw board go), the label is already set
+app.post('/api/board/start', agentLimiter, validate(workflowStartSchema), async (req, res) => {
+  try {
+    res.json(await startNow(req.body.url));
+  } catch (error) {
+    sendAgentError(res, error);
+  }
+});
 
 // Start the mw-board poll now; refused unless the fresh state offers exactly this GO
 app.post(
