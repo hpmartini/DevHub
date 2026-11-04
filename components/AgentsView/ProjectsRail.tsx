@@ -7,7 +7,6 @@ import {
   ChevronsUpDown,
   Code2,
   Settings,
-  Workflow,
 } from 'lucide-react';
 import type { AgentGrouping } from '../../types';
 import type { AgentConfigLike } from './types';
@@ -15,8 +14,10 @@ import { codeUrl } from '../../utils/codeTarget';
 
 /** App-level navigation and actions the merged rail needs from App.tsx */
 export interface RailNavProps {
+  /** Global dashboard (all contexts) */
   onOpenDashboard: () => void;
-  onOpenWorkflows?: () => void;
+  /** Dashboard of the active context (#184) */
+  onOpenContextDashboard: () => void;
   onOpenSettings: () => void;
   onOpenProject: (appId: string) => void;
 }
@@ -82,16 +83,6 @@ export const RailNav: React.FC<{
           aria-label="Expand all groups"
         >
           <ChevronsUpDown size={13} />
-        </button>
-      )}
-      {nav.onOpenWorkflows && (
-        <button
-          onClick={nav.onOpenWorkflows}
-          className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cursor"
-          title="Workflows"
-          aria-label="Workflows"
-        >
-          <Workflow size={13} />
         </button>
       )}
       <button

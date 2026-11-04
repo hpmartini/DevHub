@@ -121,10 +121,14 @@ function scanLines(buf, needles, fn) {
   }
 }
 
-/** Claude transcript -> Map(dedupeKey -> entry); whole file, window applied later. */
+/** Claude transcript -> { entries: Map(dedupeKey -> entry), meta }; whole file, window applied later. */
 export async function parseClaudeFile(file) {
   const entries = new Map();
-  await forEachJsonLine(file, ['"usage"'], (o) => {
+  const meta = { cwd: null, title: null, branch: null };
+  await forEachJsonLine(file, ['"usage"', '"customTitle"'], (o) => {
+    if (o?.type === 'custom-title' && o.customTitle) meta.title = o.customTitle;
+    if (o?.cwd && !meta.cwd) meta.cwd = o.cwd;
+    if (o?.gitBranch) meta.branch = o.gitBranch;
     const msg = o?.message;
     const u = msg?.usage;
     if (o.type !== 'assistant' || !u || msg.model === '<synthetic>') return;
@@ -142,7 +146,7 @@ export async function parseClaudeFile(file) {
     };
     entries.set(key, pickEntry(entries.get(key), entry));
   });
-  return entries;
+  return { entries, meta };
 }
 
 // Streaming rewrites a message with growing output: tokens from the most complete copy,
@@ -154,13 +158,14 @@ function pickEntry(a, b) {
   return tokens === first ? first : { ...tokens, ms: first.ms, date: first.date };
 }
 
-function rateWindow(raw, now) {
+// `resetCounts`: the source sees every use (Codex writes a snapshot on each turn), so a window
+// past its reset with no newer snapshot really is at 0 %. Claude's caches lag, so there it is unknown.
+function rateWindow(raw, now, resetCounts = false) {
   if (!raw) return null;
-  return {
-    usedPercent: raw.resetsAt != null && raw.resetsAt < now ? null : raw.usedPercent,
-    resetsAt: raw.resetsAt,
-    ...(raw.windowMinutes ? { windowMinutes: raw.windowMinutes } : {}),
-  };
+  const expired = raw.resetsAt != null && raw.resetsAt < now;
+  const extra = raw.windowMinutes ? { windowMinutes: raw.windowMinutes } : {};
+  if (expired && resetCounts) return { usedPercent: 0, resetsAt: null, reset: true, ...extra };
+  return { usedPercent: expired ? null : raw.usedPercent, resetsAt: raw.resetsAt, ...extra };
 }
 
 /** Codex rollout -> { rows: Map(date|model -> tokens), limits: latest rate_limits snapshot }. */
@@ -169,15 +174,22 @@ export async function parseCodexFile(file) {
   let model = 'unknown';
   let prev = null;
   let limits = null;
+  const meta = { cwd: null, title: null, branch: null, firstMs: null, lastMs: null };
   await forEachJsonLine(file, ['"token_count"', '"turn_context"', '"session_meta"'], (o) => {
     const p = o?.payload;
-    if (o.type === 'session_meta' && p?.model && model === 'unknown') model = p.model;
+    if (o.type === 'session_meta') {
+      if (p?.model && model === 'unknown') model = p.model;
+      meta.cwd ??= p?.cwd ?? null;
+      meta.branch ??= p?.git?.branch ?? null;
+    }
     if (o.type === 'turn_context' && p?.model) model = p.model;
     if (o.type !== 'event_msg' || p?.type !== 'token_count') return;
     const ms = Date.parse(o.timestamp);
     if (p.rate_limits && Number.isFinite(ms)) limits = { asOf: ms, raw: p.rate_limits };
     const total = p.info?.total_token_usage;
     if (!total || !Number.isFinite(ms)) return;
+    meta.firstMs ??= ms;
+    meta.lastMs = ms;
     let delta;
     if (prev) {
       delta = diffUsage(total, prev);
@@ -197,7 +209,7 @@ export async function parseCodexFile(file) {
     row.output += delta.output_tokens || 0;
     rows.set(key, row);
   });
-  return { rows, limits };
+  return { rows, limits, meta };
 }
 
 function diffUsage(cur, prev) {
@@ -217,8 +229,12 @@ export function codexLimits(snapshot, now) {
       windowMinutes: w.window_minutes,
     };
   return {
-    fiveHour: rateWindow(toWindow(windows.find((w) => w.window_minutes === FIVE_HOUR_MIN)), now),
-    weekly: rateWindow(toWindow(windows.find((w) => w.window_minutes === WEEK_MIN)), now),
+    fiveHour: rateWindow(
+      toWindow(windows.find((w) => w.window_minutes === FIVE_HOUR_MIN)),
+      now,
+      true
+    ),
+    weekly: rateWindow(toWindow(windows.find((w) => w.window_minutes === WEEK_MIN)), now, true),
     source: 'rollout',
     asOf,
     ...(raw.plan_type ? { plan: raw.plan_type } : {}),
@@ -321,6 +337,19 @@ async function parseCached(files, since, parse) {
   return out;
 }
 
+async function newestFile(files) {
+  let best = null;
+  await mapLimit(files, PARSE_CONCURRENCY, async (file) => {
+    try {
+      const { mtimeMs } = await fsp.stat(file);
+      if (!best || mtimeMs > best.mtimeMs) best = { file, mtimeMs };
+    } catch {
+      /* vanished */
+    }
+  });
+  return best?.file;
+}
+
 async function mapLimit(items, limit, fn) {
   let next = 0;
   const worker = async () => {
@@ -351,7 +380,7 @@ async function providerUsage(source, { since, firstDate, now }) {
     const parsed = await parseCached(files, since, parseClaudeFile);
     const merged = new Map();
     for (const { result } of parsed)
-      for (const [key, e] of result) merged.set(key, pickEntry(merged.get(key), e));
+      for (const [key, e] of result.entries) merged.set(key, pickEntry(merged.get(key), e));
     for (const e of merged.values()) if (e.date >= firstDate) addRow(daily, e.date, e.model, e);
     limits = await claudeLimits(source, now);
   } else {
@@ -366,7 +395,9 @@ async function providerUsage(source, { since, firstDate, now }) {
         const [date, model] = key.split('|');
         if (date >= firstDate) addRow(daily, date, model, t);
       }
-    const newest = parsed.filter((p) => p.result.limits).sort((a, b) => b.mtimeMs - a.mtimeMs)[0];
+    let newest = parsed.filter((p) => p.result.limits).sort((a, b) => b.mtimeMs - a.mtimeMs)[0];
+    // Idle account: no rollout in the window, but its last snapshot still says where it stands.
+    if (!newest) newest = (await parseCached([await newestFile(files)], 0, parseCodexFile))[0];
     limits = codexLimits(newest?.result.limits, now);
   }
 
@@ -404,17 +435,72 @@ export async function getUsage({ days = 7, now = Date.now(), sources } = {}) {
   return { generatedAt: now, days, providers };
 }
 
+const tokenSum = (t) => t.input + t.output + t.cacheRead + t.cacheWrite;
+
+/** One session row: tokens over the whole transcript, duration = first to last usage line. */
+export function sessionRow(source, file, meta, parts) {
+  return {
+    id: `${source.id}:${path.basename(file, '.jsonl')}`,
+    providerId: source.id,
+    provider: source.label,
+    title: meta.title,
+    cwd: meta.cwd,
+    branch: meta.branch,
+    firstMs: meta.firstMs,
+    lastMs: meta.lastMs,
+    tokens: parts.reduce((n, t) => n + tokenSum(t), 0),
+  };
+}
+
+/** Sessions with activity in the last `days` days, all providers (#184 sessions card). */
+export async function getSessions({ days = 7, now = Date.now(), sources } = {}) {
+  const since = windowStart(now, days);
+  const perSource = await Promise.all(
+    (sources || defaultSources()).map(async (source) => {
+      if (source.kind === 'claude') {
+        // Subagent transcripts are part of their parent session, not sessions of their own.
+        const files = (
+          await listFiles(path.join(source.dir, 'projects'), (n) => n.endsWith('.jsonl'))
+        ).filter((f) => !f.split(path.sep).includes('subagents'));
+        return (await parseCached(files, since, parseClaudeFile))
+          .filter(({ result }) => result.entries.size)
+          .map(({ file, result }) => {
+            const list = [...result.entries.values()];
+            const ms = list.map((e) => e.ms);
+            const meta = { ...result.meta, firstMs: Math.min(...ms), lastMs: Math.max(...ms) };
+            return sessionRow(source, file, meta, list);
+          });
+      }
+      const isRollout = (n) => n.startsWith('rollout-') && n.endsWith('.jsonl');
+      const files = [
+        ...(await listFiles(path.join(source.dir, 'sessions'), isRollout)),
+        ...(await listFiles(path.join(source.dir, 'archived_sessions'), isRollout)),
+      ];
+      return (await parseCached(files, since, parseCodexFile))
+        .filter(({ result }) => result.meta.lastMs != null)
+        .map(({ file, result }) =>
+          sessionRow(source, file, result.meta, [...result.rows.values()])
+        );
+    })
+  );
+  const sessions = perSource.flat().filter((s) => s.lastMs >= since);
+  return { generatedAt: now, days, sessions };
+}
+
 export const usageRouter = express.Router();
 
-usageRouter.get('/', async (req, res) => {
+const withDays = (load) => async (req, res) => {
   const raw = req.query.days ?? '7';
   const days = Number(raw);
   if (!/^\d+$/.test(String(raw)) || days < 1 || days > MAX_DAYS) {
     return res.status(400).json({ error: `days must be an integer between 1 and ${MAX_DAYS}` });
   }
   try {
-    res.json(await getUsage({ days }));
+    res.json(await load({ days }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+usageRouter.get('/', withDays(getUsage));
+usageRouter.get('/sessions', withDays(getSessions));

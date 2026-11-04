@@ -5,7 +5,9 @@ export type UsageDays = 7 | 30;
 export interface UsageWindow {
   /** null = window has reset or the value is stale */
   usedPercent: number | null;
-  resetsAt: number;
+  /** null when `reset`: the window rolled over and nothing was used since */
+  resetsAt: number | null;
+  reset?: boolean;
   windowMinutes?: number;
 }
 
@@ -52,4 +54,23 @@ export interface UsageResponse {
   generatedAt: number;
   days: number;
   providers: UsageProvider[];
+}
+
+/** GET /api/usage/sessions: one row per session with activity in the window */
+export interface UsageSession {
+  id: string;
+  providerId: string;
+  provider: string;
+  title: string | null;
+  cwd: string | null;
+  branch: string | null;
+  firstMs: number;
+  lastMs: number;
+  tokens: number;
+}
+
+export interface UsageSessionsResponse {
+  generatedAt: number;
+  days: number;
+  sessions: UsageSession[];
 }
