@@ -1,12 +1,16 @@
 /**
  * Local token usage per subscription (Claude Code, MiniMax via Claude Code, Codex accounts).
- * Reads only local transcripts and rate-limit snapshots - no API calls, no keys.
+ * Reads local transcripts and rate-limit snapshots. The only network call is Claude's plan
+ * limits from the endpoint Claude Code itself uses with the subscription login - no API key.
  */
+/* global AbortSignal */
+import { execFile } from 'child_process';
 import express from 'express';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import os from 'os';
 import path from 'path';
+import { promisify } from 'util';
 
 const MAX_DAYS = 90;
 const FIVE_HOUR_MIN = 300;
@@ -61,6 +65,7 @@ export function defaultSources(env = process.env) {
       kind: 'claude',
       dir: claudeDir,
       limitsFile: path.join(claudeDir, 'devorbit-rate-limits.json'),
+      oauth: true,
       // Claude Code keeps .claude.json next to a custom config dir, else in $HOME.
       claudeJson: env.CLAUDE_CONFIG_DIR
         ? path.join(claudeDir, '.claude.json')
@@ -249,8 +254,78 @@ function toMs(v) {
   return Number.isFinite(ms) ? ms : null;
 }
 
+const execFileP = promisify(execFile);
+const OAUTH_TTL_MS = 5 * 60 * 1000;
+const SNAPSHOT_FRESH_MS = 60 * 60 * 1000;
+let oauthMemo = { at: 0, value: null };
+
+/** Claude Code's subscription login: macOS keychain, else the credentials file. Never logged. */
+export async function readClaudeOauth(claudeDir) {
+  let raw;
+  if (process.platform === 'darwin') {
+    try {
+      ({ stdout: raw } = await execFileP(
+        'security',
+        ['find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+        { timeout: 5000 }
+      ));
+    } catch {
+      /* not in the keychain - try the file */
+    }
+  }
+  raw ??= await fsp.readFile(path.join(claudeDir, '.credentials.json'), 'utf8').catch(() => null);
+  try {
+    return JSON.parse(raw)?.claudeAiOauth ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Live limits from the endpoint Claude Code's /usage calls with the subscription login (no API key). */
+export async function claudeOauthLimits(
+  source,
+  now,
+  { readOauth = readClaudeOauth, fetchFn = fetch } = {}
+) {
+  const oauth = await readOauth(source.dir);
+  // shortcut: an expired token is not refreshed here (would rotate Claude Code's own login); Claude Code refreshes it on its next run
+  if (!oauth?.accessToken || (oauth.expiresAt && oauth.expiresAt < now)) return null;
+  const res = await fetchFn('https://api.anthropic.com/api/oauth/usage', {
+    headers: { Authorization: `Bearer ${oauth.accessToken}`, 'anthropic-beta': 'oauth-2025-04-20' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  const win = (w, minutes) =>
+    w
+      ? rateWindow(
+          {
+            usedPercent: w.utilization ?? null,
+            resetsAt: toMs(w.resets_at),
+            windowMinutes: minutes,
+          },
+          now
+        )
+      : null;
+  return {
+    fiveHour: win(body.five_hour, FIVE_HOUR_MIN),
+    weekly: win(body.seven_day, WEEK_MIN),
+    source: 'oauth',
+    asOf: now,
+    ...(oauth.subscriptionType ? { plan: oauth.subscriptionType } : {}),
+  };
+}
+
+async function cachedOauthLimits(source, now) {
+  if (now - oauthMemo.at < OAUTH_TTL_MS) return oauthMemo.value;
+  const value = await claudeOauthLimits(source, now).catch(() => null);
+  oauthMemo = { at: now, value };
+  return value;
+}
+
 export async function claudeLimits(source, now) {
   const readJson = async (f) => JSON.parse(await fsp.readFile(f, 'utf8'));
+  let snapshot = null;
   if (source.limitsFile) {
     try {
       const snap = await readJson(source.limitsFile);
@@ -266,16 +341,22 @@ export async function claudeLimits(source, now) {
               now
             )
           : null;
-      return {
+      snapshot = {
         fiveHour: win(rl.five_hour, FIVE_HOUR_MIN),
         weekly: win(rl.seven_day, WEEK_MIN),
         source: 'statusline',
         asOf: snap.capturedAt ?? null,
       };
     } catch {
-      /* no snapshot - fall back to Claude Code's own cache */
+      /* no snapshot - fall back to the endpoint or Claude Code's own cache */
     }
   }
+  if (snapshot && now - (snapshot.asOf ?? 0) < SNAPSHOT_FRESH_MS) return snapshot;
+  if (source.oauth) {
+    const live = await cachedOauthLimits(source, now);
+    if (live) return live;
+  }
+  if (snapshot) return snapshot;
   if (source.claudeJson) {
     try {
       const [json, stat] = await Promise.all([

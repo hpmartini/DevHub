@@ -11,7 +11,7 @@ export interface UsageWindow {
   windowMinutes?: number;
 }
 
-export type UsageLimitSource = 'statusline' | 'claude-cache' | 'rollout';
+export type UsageLimitSource = 'statusline' | 'oauth' | 'claude-cache' | 'rollout';
 
 export interface UsageLimits {
   fiveHour: UsageWindow | null;

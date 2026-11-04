@@ -22,7 +22,7 @@ The dashboard (`/dashboard`, context variant filtered to the active context's pr
 Usage page (`/usage`, `components/UsageView/`, `server/services/usageService.js`, route `/api/usage?days=1..90`):
 
 - Tokens per day, model and provider (input, output, cache read, cache write) for Claude Code, each Codex account and MiniMax, read from local session logs (`~/.claude/projects`, `$CODEX_HOME/sessions`)
-- Plan limits (5h / week): Codex from the newest `rate_limits` event (also outside the window for idle accounts; a window past its reset counts as 0 %); Claude from the statusline snapshot written by `scripts/claude-rate-limits-tap.sh`, fallback `~/.claude.json`; missing source shows "Limit unbekannt", a source without a 5h window shows no 5h bar, snapshots older than 1 h are marked "veraltet" with their age; back button to the previous view
+- Plan limits (5h / week): Codex from the newest `rate_limits` event (also outside the window for idle accounts; a window past its reset counts as 0 %); Claude from a fresh statusline snapshot (`scripts/claude-rate-limits-tap.sh`), else live from the endpoint Claude Code's `/usage` calls with the subscription login (token from keychain / `.credentials.json`, server-side only, 5 min cache, no refresh), else `~/.claude.json`; missing source shows "Limit unbekannt", a source without a 5h window shows no 5h bar, snapshots older than 1 h are marked "veraltet" with their age; back button to the previous view
 - `scripts/verify-usage.mjs --days 30` re-sums the same logs independently and diffs per day and provider
 
 Further modes:

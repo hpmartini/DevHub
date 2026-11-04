@@ -11,6 +11,7 @@ const {
   parseClaudeFile,
   codexLimits,
   claudeLimits,
+  claudeOauthLimits,
   windowStart,
   localDate,
   usageRouter,
@@ -274,6 +275,49 @@ describe('usageService - claude limits', () => {
     const limits = await claudeLimits({ limitsFile }, NOW);
     expect(limits.fiveHour).toBeNull();
     expect(limits.weekly).toMatchObject({ usedPercent: 7 });
+  });
+
+  it('reads live limits from the subscription endpoint: week only when the plan has no 5h window', async () => {
+    let seen;
+    const fetchFn = async (url, init) => {
+      seen = { url, auth: init.headers.Authorization };
+      return {
+        ok: true,
+        json: async () => ({
+          five_hour: null,
+          seven_day: { utilization: 27, resets_at: new Date(NOW + 86400000).toISOString() },
+        }),
+      };
+    };
+    const readOauth = async () => ({
+      accessToken: 't0k',
+      expiresAt: NOW + 1000,
+      subscriptionType: 'max',
+    });
+    const limits = await claudeOauthLimits({ dir: '/x' }, NOW, { readOauth, fetchFn });
+    expect(seen).toEqual({ url: 'https://api.anthropic.com/api/oauth/usage', auth: 'Bearer t0k' });
+    expect(limits).toEqual({
+      fiveHour: null,
+      weekly: { usedPercent: 27, resetsAt: NOW + 86400000, windowMinutes: 10080 },
+      source: 'oauth',
+      asOf: NOW,
+      plan: 'max',
+    });
+    expect(JSON.stringify(limits)).not.toContain('t0k');
+  });
+
+  it('skips the endpoint with an expired or missing login, or a failed response', async () => {
+    const fetchFn = async () => ({ ok: false });
+    const expired = async () => ({ accessToken: 'x', expiresAt: NOW - 1 });
+    let called = false;
+    const spy = async () => ((called = true), { ok: true, json: async () => ({}) });
+    expect(await claudeOauthLimits({}, NOW, { readOauth: expired, fetchFn: spy })).toBeNull();
+    expect(
+      await claudeOauthLimits({}, NOW, { readOauth: async () => null, fetchFn: spy })
+    ).toBeNull();
+    expect(called).toBe(false);
+    const ok = async () => ({ accessToken: 'x', expiresAt: NOW + 1 });
+    expect(await claudeOauthLimits({}, NOW, { readOauth: ok, fetchFn })).toBeNull();
   });
 
   it('has no limits without a source', async () => {

@@ -41,6 +41,7 @@ const SERIES_COLORS = [
 
 const SOURCE_LABEL: Record<UsageLimitSource, string> = {
   statusline: 'Statusline',
+  oauth: 'Claude-Abo live',
   'claude-cache': 'Claude-Cache',
   rollout: 'Codex-Rollout',
 };
