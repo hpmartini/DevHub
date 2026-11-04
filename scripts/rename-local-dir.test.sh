@@ -14,6 +14,12 @@ git -C "$SRC" worktree add -q "$SRC/.claude/worktrees/wt1" -b wt1
 key=$(printf '%s' "$SRC" | sed 's#[/.]#-#g')
 mkdir -p "$HOME/.claude/projects/$key/memory" "$HOME/.claude/projects/$key--claude-worktrees-wt1"
 echo '{ "devorbitdashboard": "'"$SRC"'" }' >"$HOME/PROJECTS/Magos/config/projekt-repos.json"
+# Orkumo settings keyed by project ID (sha256(path)) plus a sibling folder that must stay untouched
+pid() { printf '%s' "$1" | shasum -a 256 | cut -c1-16; }
+export ORKUMO_DATA_DIRS="$T/data" SKIP_APP_CHECK=1
+mkdir -p "$T/data" "$HOME/.claude/projects/$key-foo"
+OLD_ID=$(pid "$SRC")
+echo '{ "favorites": ["'"$OLD_ID"'"], "cwd": "'"$SRC"'/src", "other": "'"$SRC"'-foo" }' >"$T/data/settings.json"
 
 "$here/rename-local-dir.sh" --dry-run
 [[ -d "$SRC" ]] || { echo "FAIL: dry-run moved the folder"; exit 1; }
@@ -31,5 +37,11 @@ git -C "$DST" worktree list | grep -q "$DST/.claude/worktrees/wt1" || fail "work
 [[ -d "$HOME/.claude/projects/$nkey/memory" ]] || fail "claude memory folder"
 [[ -d "$HOME/.claude/projects/$nkey--claude-worktrees-wt1" ]] || fail "claude worktree folder"
 grep -q "\"$DST\"" "$HOME/PROJECTS/Magos/config/projekt-repos.json" || fail "magos mapping"
+[[ -d "$HOME/.claude/projects/$key-foo" ]] || fail "sibling claude folder was moved"
+S="$T/data/settings.json"
+grep -q "\"$(pid "$DST")\"" "$S" || fail "project id not remapped"
+grep -q "\"$DST/src\"" "$S" || fail "path not rewritten"
+grep -q "\"$SRC-foo\"" "$S" || fail "sibling path rewritten"
+ls "$T/data" | grep -q '^settings.json.bak-' || fail "no settings backup"
 git -C "$DST" worktree list
 echo "PASS rename-local-dir.sh"

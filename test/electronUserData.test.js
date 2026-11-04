@@ -1,12 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { legacyUserDataDir } from '../electron/constants.js';
+import { LEGACY_USER_DATA_DIR } from '../electron/constants.js';
 
 describe('Electron userData after the rename to Orkumo (#196)', () => {
-  it('keeps the pre-rename folder names', () => {
-    expect(legacyUserDataDir(true)).toBe('DevOrbitDashboard');
-    expect(legacyUserDataDir(false)).toBe('devorbit-dashboard');
+  it('keeps the pre-rename folder name (package.json name of the old builds)', () => {
+    expect(LEGACY_USER_DATA_DIR).toBe('devorbit-dashboard');
   });
 
   it('pins userData in main.js before the app starts', () => {

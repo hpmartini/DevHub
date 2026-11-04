@@ -125,7 +125,7 @@ The Electron app respects the following environment variables:
 This happens when the app isn't properly signed. For development:
 
 ```bash
-xattr -cr /Applications/Orkumo\ Dashboard.app
+xattr -cr /Applications/Orkumo.app
 ```
 
 ### Linux: Permission denied

@@ -1,12 +1,12 @@
 # #196 AC-1: verbleibende Altnamen
 
-Befehl: `git grep -n -i "devorbit\|devhub\|dev orbit" -- . ':!briefings' ':!graphify-out' ':!CHANGELOG.md' ':!docs/landing-evidence'`
+Befehl: `git grep -n -i "devorbit\|devhub\|dev orbit" -- . ':!briefings' ':!graphify-out' ':!CHANGELOG.md' ':!docs/landing-evidence' ':!docs/evidence/196'`
 
-Treffer: 257, davon unklassifiziert: 0. `docs/landing-evidence` ist ein historisches Lighthouse-Artefakt und bleibt unverändert.
+Treffer: 262, davon unklassifiziert: 0. `docs/landing-evidence` ist ein historisches Lighthouse-Artefakt und bleibt unverändert.
 
 | Anzahl | Guardrail-Kategorie                                                                                                      |
 | -----: | :----------------------------------------------------------------------------------------------------------------------- |
-|      8 | Rename-Skript und Review-Skript (#196, nennen alten Pfad/Repo absichtlich)                                               |
+|     13 | Rename-Skript und Review-Skript (#196, nennen alten Pfad/Repo absichtlich)                                               |
 |      3 | Electron userData-Pin (alter Ordnername, damit Daten bleiben)                                                            |
 |     62 | Env-Variablen (DEVORBIT*\*, DEVHUB*\*)                                                                                   |
 |     50 | localStorage-/Server-UI-Schlüssel (devOrbit*, devorbit-*, devorbit.\*)                                                   |
@@ -23,21 +23,26 @@ Treffer: 257, davon unklassifiziert: 0. `docs/landing-evidence` ist ein historis
 
 ```
 scripts/rename-local-dir.sh:2:# Moves the local checkout from ~/PROJECTS/DevOrbitDashboard to ~/PROJECTS/Orkumo (issue #196) and
-scripts/rename-local-dir.sh:13:SRC="${SRC:-$HOME/PROJECTS/DevOrbitDashboard}"
-scripts/rename-local-dir.sh:54:new_url=${url//hpmartini\/DevHub/hpmartini\/Orkumo}
+scripts/rename-local-dir.sh:8:#   ~/PROJECTS/DevOrbitDashboard/scripts/rename-local-dir.sh [--dry-run]
+scripts/rename-local-dir.sh:14:SRC="${SRC:-$HOME/PROJECTS/DevOrbitDashboard}"
+scripts/rename-local-dir.sh:18:ORKUMO_DATA_DIRS="${ORKUMO_DATA_DIRS:-$HOME/Library/Application Support/devorbit-dashboard/data:$DST/data}"
+scripts/rename-local-dir.sh:44:  if [[ -z "${SKIP_APP_CHECK:-}" ]] && pgrep -f '(DevOrbitDashboard|Orkumo)\.app/Contents/MacOS/' >/dev/null; then
+scripts/rename-local-dir.sh:45:    echo "quit the Orkumo/DevOrbitDashboard desktop app first" >&2
+scripts/rename-local-dir.sh:69:new_url=${url//hpmartini\/DevHub/hpmartini\/Orkumo}
+scripts/rename-local-dir.sh:75:  # "--": worktree folders (/.claude/... -> --claude-...), not siblings like DevOrbitDashboard-foo
 scripts/rename-local-dir.test.sh:9:SRC="$HOME/PROJECTS/DevOrbitDashboard"
 scripts/rename-local-dir.test.sh:12:git -C "$SRC" remote add origin git@github.com:hpmartini/DevHub.git
 scripts/rename-local-dir.test.sh:16:echo '{ "devorbitdashboard": "'"$SRC"'" }' >"$HOME/PROJECTS/Magos/config/projekt-repos.json"
-scripts/review/196.sh:22:git grep -n -i "devorbit\|devhub\|dev orbit" -- . ':!briefings' ':!graphify-out' ':!CHANGELOG.md' ':!docs/landing-evidence' | wc -l
+scripts/review/196.sh:22:git grep -n -i "devorbit\|devhub\|dev orbit" -- . ':!briefings' ':!graphify-out' ':!CHANGELOG.md' ':!docs/landing-evidence' ':!docs/evidence/196' | wc -l
 scripts/review/196.sh:29:HOME="$DATA/home" DEVORBIT_DATA_PATH="$DATA" SERVER_PORT=$SERVER_PORT node server/index.js >"$DATA/server.log" 2>&1 &
 ```
 
 ## Electron userData-Pin (alter Ordnername, damit Daten bleiben)
 
 ```
-electron/constants.js:15:  isPackaged ? 'DevOrbitDashboard' : 'devorbit-dashboard';
-test/electronUserData.test.js:8:    expect(legacyUserDataDir(true)).toBe('DevOrbitDashboard');
-test/electronUserData.test.js:9:    expect(legacyUserDataDir(false)).toBe('devorbit-dashboard');
+electron/constants.js:12: * runs both used "devorbit-dashboard". Without pinning, existing installs would start with empty data.
+electron/constants.js:14:export const LEGACY_USER_DATA_DIR = 'devorbit-dashboard';
+test/electronUserData.test.js:8:    expect(LEGACY_USER_DATA_DIR).toBe('devorbit-dashboard');
 ```
 
 ## Env-Variablen (DEVORBIT*\*, DEVHUB*\*)

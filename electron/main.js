@@ -6,11 +6,11 @@ import * as fs from 'fs';
 import { createServer } from 'net';
 import dotenv from 'dotenv';
 import { isValidExternalUrl, validateDialogOptions, windowOpenRoute } from './validation.js';
-import { APP_NAME, legacyUserDataDir } from './constants.js';
+import { APP_NAME, LEGACY_USER_DATA_DIR } from './constants.js';
 import { PORTS } from '../config/defaults.js';
 
 // Before anything reads userData (single-instance lock, sessions, data dir)
-app.setPath('userData', path.join(app.getPath('appData'), legacyUserDataDir(app.isPackaged)));
+app.setPath('userData', path.join(app.getPath('appData'), LEGACY_USER_DATA_DIR));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

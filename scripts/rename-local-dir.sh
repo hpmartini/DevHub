@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Moves the local checkout from ~/PROJECTS/DevOrbitDashboard to ~/PROJECTS/Orkumo (issue #196) and
 # fixes everything that hangs on the path: git remote, linked worktrees, Claude Code memory/session
-# folders, Magos' project mapping. Run it after the rename PR is merged, with no Claude/dev process
-# inside the folder. Idempotent: a second run only repeats the fix-ups.
+# folders, Magos' project mapping, Orkumo's own settings (project IDs hash the path). Run it after the
+# rename PR is merged, from outside the folder (e.g. `cd ~`), with no Claude/dev process inside the
+# folder and the desktop app quit. Idempotent: a second run only repeats the fix-ups.
 #
-#   scripts/rename-local-dir.sh [--dry-run]
-#   SRC / DST / MAGOS_REPOS override the defaults (used by the self-test on a throwaway copy).
+#   ~/PROJECTS/DevOrbitDashboard/scripts/rename-local-dir.sh [--dry-run]
+#   SRC / DST / MAGOS_REPOS / ORKUMO_DATA_DIRS (colon-separated) override the defaults (self-test).
 set -euo pipefail
 
 DRY=0
@@ -13,7 +14,12 @@ DRY=0
 SRC="${SRC:-$HOME/PROJECTS/DevOrbitDashboard}"
 DST="${DST:-$HOME/PROJECTS/Orkumo}"
 MAGOS_REPOS="${MAGOS_REPOS:-$HOME/PROJECTS/Magos/config/projekt-repos.json}"
+# Desktop app (pinned userData, electron/constants.js) and the dev server's local data/
+ORKUMO_DATA_DIRS="${ORKUMO_DATA_DIRS:-$HOME/Library/Application Support/devorbit-dashboard/data:$DST/data}"
 CLAUDE_PROJECTS="$HOME/.claude/projects"
+HERE=$(cd "$(dirname "$0")" && pwd)
+NODE_SCRIPT="$HERE/remap-project-path.mjs"
+[[ "$HERE" == "$SRC"/* ]] && NODE_SCRIPT="$DST${HERE#"$SRC"}/remap-project-path.mjs" # moves with the folder
 
 run() { if ((DRY)); then echo "would: $*"; else echo "+ $*"; "$@"; fi; }
 key() { printf '%s' "$1" | sed 's#[/.]#-#g'; } # Claude Code's folder key for a cwd
@@ -23,11 +29,20 @@ if [[ ! -d "$SRC" && ! -d "$DST" ]]; then echo "neither $SRC nor $DST exists" >&
 
 if [[ -d "$SRC" ]]; then
   # A process whose cwd is inside the folder would keep working on a path that no longer exists.
-  busy=$(lsof -a -d cwd -Fpn 2>/dev/null | awk -v s="$SRC" '/^p/{p=substr($0,2)} /^n/{n=substr($0,2); if (n==s || index(n, s"/")==1) print p" "n}' || true)
+  command -v lsof >/dev/null || { echo "lsof missing, cannot check for processes inside $SRC" >&2; exit 1; }
+  # lsof exits 1 on unreadable mounts (e.g. Time Machine) while still listing everything else.
+  cwds=$(lsof -a -d cwd -Fpn 2>/dev/null || true)
+  [[ -n "$cwds" ]] || { echo "lsof returned nothing, cannot check for processes inside $SRC" >&2; exit 1; }
+  busy=$(awk -v s="$SRC" '/^p/{p=substr($0,2)} /^n/{n=substr($0,2); if (n==s || index(n, s"/")==1) print p" "n}' <<<"$cwds")
   busy=$(grep -v "^$$ " <<<"$busy" || true)
   if [[ -n "$busy" ]]; then
-    echo "processes still work inside $SRC (pid cwd), stop them first:" >&2
+    echo "processes still work inside $SRC (pid cwd), stop them first (run this script from outside):" >&2
     echo "$busy" >&2
+    ((DRY)) || exit 1
+  fi
+  # The desktop app keeps settings in memory and would write the old paths back.
+  if [[ -z "${SKIP_APP_CHECK:-}" ]] && pgrep -f '(DevOrbitDashboard|Orkumo)\.app/Contents/MacOS/' >/dev/null; then
+    echo "quit the Orkumo/DevOrbitDashboard desktop app first" >&2
     ((DRY)) || exit 1
   fi
   SRC_P=$(cd "$SRC" && pwd -P) # git reports physical paths (/private/var vs /var)
@@ -50,14 +65,15 @@ if ((DRY)); then echo "would: git -C $DST worktree repair ${repair[*]+"${repair[
 fi
 
 GIT_DIR_OF=$([[ -d "$DST" ]] && echo "$DST" || echo "$SRC")
-url=$(git -C "$GIT_DIR_OF" remote get-url origin)
+url=$(git -C "$GIT_DIR_OF" remote get-url origin 2>/dev/null || true)
 new_url=${url//hpmartini\/DevHub/hpmartini\/Orkumo}
-[[ "$new_url" != "$url" ]] && run git -C "$GIT_DIR_OF" remote set-url origin "$new_url"
+if [[ "$new_url" != "$url" ]]; then run git -C "$GIT_DIR_OF" remote set-url origin "$new_url"; fi
 
 old_key=$(key "$SRC")
 new_key=$(key "$DST")
 if [[ -d "$CLAUDE_PROJECTS" ]]; then
-  for d in "$CLAUDE_PROJECTS/$old_key" "$CLAUDE_PROJECTS/$old_key"-*; do
+  # "--": worktree folders (/.claude/... -> --claude-...), not siblings like DevOrbitDashboard-foo
+  for d in "$CLAUDE_PROJECTS/$old_key" "$CLAUDE_PROJECTS/$old_key"--*; do
     [[ -d "$d" ]] || continue
     target="$CLAUDE_PROJECTS/$new_key${d#"$CLAUDE_PROJECTS/$old_key"}"
     if [[ -e "$target" ]]; then echo "skip: $target exists, merge $d by hand" >&2; continue; fi
@@ -70,6 +86,14 @@ if [[ -f "$MAGOS_REPOS" ]] && grep -q "\"$SRC\"" "$MAGOS_REPOS"; then
     echo "+ $MAGOS_REPOS: $SRC -> $DST"
     SRC="$SRC" DST="$DST" perl -pi -e 's/\Q"$ENV{SRC}"\E/"$ENV{DST}"/g' "$MAGOS_REPOS"
   fi
+fi
+
+IFS=: read -r -a data_dirs <<<"$ORKUMO_DATA_DIRS"
+if ((DRY)); then
+  echo "would: node $NODE_SCRIPT $SRC $DST ${data_dirs[*]}"
+  node "$HERE/remap-project-path.mjs" --dry-run "$SRC" "$DST" "${data_dirs[@]}"
+else
+  node "$NODE_SCRIPT" "$SRC" "$DST" "${data_dirs[@]}"
 fi
 
 echo "done. Open new Claude sessions from $DST."
