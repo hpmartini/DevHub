@@ -16,7 +16,7 @@ const api = vi.hoisted(() => ({
   fetchIssueSummary: vi.fn(),
   setIssueLabels: vi.fn(),
   fetchRepoPath: vi.fn(),
-  sendWorkflowGo: vi.fn(),
+  sendPollGo: vi.fn(),
   errorDetails: () => ({}),
 }));
 vi.mock('../services/boardApi', () => api);
@@ -231,15 +231,13 @@ describe('IssueModal (#104)', () => {
   });
 
   it('released issue waiting on the poll: "Jetzt starten" starts it after confirming (#145)', async () => {
-    api.sendWorkflowGo.mockResolvedValue({ ok: true });
+    api.sendPollGo.mockResolvedValue({ ok: true });
     renderModal();
     const start = await screen.findByRole('button', { name: /Jetzt starten/ });
     fireEvent.click(start);
-    expect(api.sendWorkflowGo).not.toHaveBeenCalled();
+    expect(api.sendPollGo).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Wirklich/ }));
-    await waitFor(() =>
-      expect(api.sendWorkflowGo).toHaveBeenCalledWith('PVTI_1', { kind: 'poll' })
-    );
+    await waitFor(() => expect(api.sendPollGo).toHaveBeenCalledWith('PVTI_1'));
   });
 
   it('picked-up issue (session started): no "Jetzt starten"', async () => {

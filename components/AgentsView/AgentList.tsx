@@ -13,7 +13,6 @@ import {
   SquareTerminal,
   Star,
   Timer,
-  Workflow,
 } from 'lucide-react';
 import type {
   AgentSession,
@@ -45,6 +44,7 @@ import {
 import { FAVORITES_GROUP_KEY, groupNeighbour } from '../../hooks/useRailPreferences';
 import type { AgentConfigLike } from './types';
 import { RailNavProps } from './ProjectsRail';
+import { moduleIcon } from '../moduleIcon';
 import { IssuePill, PrPill, ServerLinks, SubagentsBadge } from './SessionLinks';
 import { CacheBadge } from './CacheBadge';
 import { cacheCountdown, isCacheWarning } from '../../utils/agentCache';
@@ -977,11 +977,17 @@ export const AgentList: React.FC<AgentListProps> = ({
                             icon={<Kanban size={12} />}
                             className="p-1.5"
                           />
-                          <ActionButton
-                            action={actions.find((a) => a.id === 'workflow')}
-                            icon={<Workflow size={12} />}
-                            className="p-1.5"
-                          />
+                          {nav?.modes?.map((m) => {
+                            const Icon = moduleIcon(m.icon);
+                            return (
+                              <ActionButton
+                                key={m.id}
+                                action={actions.find((a) => a.id === `mode:${m.id}`)}
+                                icon={<Icon size={12} />}
+                                className="p-1.5"
+                              />
+                            );
+                          })}
                         </div>
                         {onToggleFavoriteSession && (
                           <FavoriteButton

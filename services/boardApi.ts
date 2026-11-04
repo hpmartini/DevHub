@@ -12,9 +12,7 @@ import type {
   BoardSettings,
   IssueComment,
   IssueSummary,
-  WorkflowDetails,
 } from '../types';
-import type { WorkflowGo } from '../utils/workflowStage.js';
 
 /** JSON request against the API; failures throw with the server's `error` message */
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -135,28 +133,7 @@ export function updateBoardSettings(patch: Partial<BoardSettings>): Promise<Boar
   });
 }
 
-// --- Workflows (#87) ---
-
-/** GO for the next stage; the server refuses (409) unless it is the GO the fresh state offers */
-export function sendWorkflowGo(
-  itemId: string,
-  go: WorkflowGo
-): Promise<{ ok: true; pollError?: string | null }> {
-  // the poll start has its own route; /workflows/go takes the build GO only (#136)
-  if (go.kind === 'poll')
-    return request('/workflows/poll', { method: 'POST', body: JSON.stringify({ itemId }) });
-  return request('/workflows/go', { method: 'POST', body: JSON.stringify({ itemId, go }) });
-}
-
-export function fetchWorkflowDetails(itemId: string): Promise<WorkflowDetails> {
-  return request<WorkflowDetails>(`/workflows/details?itemId=${encodeURIComponent(itemId)}`);
-}
-
-export function fetchWorkflowDoc(
-  itemId: string,
-  path: string
-): Promise<{ name: string; path: string; content: string }> {
-  return request(
-    `/workflows/doc?itemId=${encodeURIComponent(itemId)}&path=${encodeURIComponent(path)}`
-  );
+/** Starts the mw-board poll now; the server refuses (409) unless the fresh state offers it (#145) */
+export function sendPollGo(itemId: string): Promise<{ ok: true }> {
+  return request('/board/poll', { method: 'POST', body: JSON.stringify({ itemId }) });
 }

@@ -9,7 +9,7 @@ import { BUILD_LABEL, sameGo } from '../../utils/workflowStage.js';
 /** launchd job of `mw board install` */
 export const MW_BOARD_JOB = 'de.martini-labs.mw-board';
 
-/** Body `go` of POST /api/workflows/go: only the build GO; the poll has its own route */
+/** Body `go` of the build GO route (Workflows module); the poll has its own route (POST /api/board/poll) */
 export const workflowGoSchema = z.object({ kind: z.literal('build') }).strict();
 
 /**
