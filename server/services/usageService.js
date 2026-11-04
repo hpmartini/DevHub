@@ -466,8 +466,10 @@ export async function getSessions({ days = 7, now = Date.now(), sources } = {}) 
           .filter(({ result }) => result.entries.size)
           .map(({ file, result }) => {
             const list = [...result.entries.values()];
-            const ms = list.map((e) => e.ms);
-            const meta = { ...result.meta, firstMs: Math.min(...ms), lastMs: Math.max(...ms) };
+            // reduce, not Math.min(...): spread overflows the stack on huge transcripts
+            const firstMs = list.reduce((m, e) => Math.min(m, e.ms), Infinity);
+            const lastMs = list.reduce((m, e) => Math.max(m, e.ms), -Infinity);
+            const meta = { ...result.meta, firstMs, lastMs };
             return sessionRow(source, file, meta, list);
           });
       }

@@ -28,5 +28,11 @@ echo
 echo "Review #184:  http://localhost:$VITE_PORT/agents"
 echo "  Mode bar next to the robot; robot = context dashboard, rocket = global dashboard"
 echo "  API: http://localhost:$SERVER_PORT/api/usage?days=7  ·  /api/usage/sessions?days=7  ·  /api/system/versions"
+if [ ! -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/devorbit-rate-limits.json" ]; then
+  echo
+  echo "Claude limits: no live source yet (only the stale ~/.claude.json cache)."
+  echo "  To enable, set statusLine.command in your Claude settings to:"
+  echo "  bash $(pwd)/scripts/claude-rate-limits-tap.sh <your current statusline command>"
+fi
 echo "Ctrl+C stops both servers."
 wait
