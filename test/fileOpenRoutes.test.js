@@ -32,6 +32,9 @@ beforeAll(async () => {
   fs.writeFileSync(path.join(dir, 'page.html'), '<script></script>');
   // Finder alias (bookmark) named like a PDF; `open` would follow it to its target
   fs.writeFileSync(path.join(dir, 'alias.pdf'), Buffer.from('book\0\0\0\0mark\0\0\0\0', 'latin1'));
+  // classic alias: plain data fork, target in the resource fork
+  fs.writeFileSync(path.join(dir, 'classic.pdf'), '%PDF');
+  fs.writeFileSync(path.join(dir, 'classic.pdf', '..namedfork', 'rsrc'), 'alis');
   const app = express();
   // same order as server/index.js: token check before the route
   app.use(remoteAccess.requireRemoteToken);
@@ -81,6 +84,7 @@ describe('POST /api/files/open', () => {
     'notes.py',
     'page.html',
     'alias.pdf',
+    'classic.pdf',
   ])('reveals launchable %s in Finder instead of opening it', async (name) => {
     const res = await post({ path: `./${name}`, cwd: dir });
     expect(res.status).toBe(200);
@@ -144,17 +148,8 @@ describe('remote access (AC-5)', () => {
     }
   });
 
-  it('accepts the Electron file:// origin only inside Electron', () => {
-    const saved = process.env.ELECTRON_MODE;
-    try {
-      delete process.env.ELECTRON_MODE;
-      expect(remoteAccess.isLoopbackOrigin('null')).toBe(false);
-      process.env.ELECTRON_MODE = 'true';
-      expect(remoteAccess.isLoopbackOrigin('null')).toBe(true);
-    } finally {
-      if (saved === undefined) delete process.env.ELECTRON_MODE;
-      else process.env.ELECTRON_MODE = saved;
-    }
+  it('refuses the opaque "null" origin (sandboxed iframes send it too)', () => {
+    expect(remoteAccess.isLoopbackOrigin('null')).toBe(false);
   });
 });
 

@@ -34,8 +34,17 @@ const DOCUMENT_EXT = new Set(
     .split(' ')
     .map((ext) => `.${ext}`)
 );
-// Finder alias files are not symlinks: realpath keeps them, `open` follows them to their target
+// Finder aliases (bookmark data) are not symlinks: realpath keeps them, `open` follows them
 const ALIAS_MAGIC = Buffer.from('book\0\0\0\0mark', 'latin1');
+
+// classic aliases keep their target in the resource fork ('alis'); a plain document has none
+const hasResourceFork = (file) => {
+  try {
+    return fs.statSync(path.join(file, '..namedfork', 'rsrc')).size > 0;
+  } catch {
+    return false;
+  }
+};
 
 const isAliasFile = (file) => {
   const head = Buffer.alloc(ALIAS_MAGIC.length);
@@ -91,7 +100,11 @@ export function resolveOpenTarget(input, cwd, roots = defaultRoots()) {
   // folders with an extension are bundles (.app, .xpc, .workflow ...)
   const safe = stat.isDirectory()
     ? !ext
-    : DOCUMENT_EXT.has(ext) && (stat.mode & 0o111) === 0 && !isAliasFile(real);
+    : stat.isFile() &&
+      DOCUMENT_EXT.has(ext) &&
+      (stat.mode & 0o111) === 0 &&
+      !hasResourceFork(real) &&
+      !isAliasFile(real);
   return { path: real, reveal: !safe };
 }
 
