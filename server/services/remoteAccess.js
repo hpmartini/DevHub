@@ -32,6 +32,8 @@ const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 // Browsers send Origin on cross-site POSTs; cors() is open, so host-launching routes refuse non-loopback origins.
 export function isLoopbackOrigin(origin) {
   if (!origin) return true;
+  // packaged Electron loads file:// and sends "null" (same rule as the cors() check in index.js)
+  if (origin === 'null') return process.env.ELECTRON_MODE === 'true';
   try {
     return LOCAL_HOSTS.has(new URL(origin).hostname);
   } catch {

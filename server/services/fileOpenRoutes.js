@@ -4,6 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
 import { isLoopbackOrigin } from './remoteAccess.js';
 
 /**
@@ -19,37 +20,33 @@ const openLimiter = rateLimit({
   message: { error: 'Too many file opens, please slow down' },
 });
 
-// Bundles, scripts, installers and Finder location files (.fileloc can point at a binary)
-const LAUNCHABLE_EXT = new Set([
-  '.app',
-  '.command',
-  '.sh',
-  '.bash',
-  '.zsh',
-  '.csh',
-  '.tool',
-  '.terminal',
-  '.workflow',
-  '.action',
-  '.pkg',
-  '.mpkg',
-  '.jar',
-  '.scpt',
-  '.scptd',
-  '.applescript',
-  '.prefpane',
-  '.saver',
-  '.qlgenerator',
-  '.fileloc',
-  '.webloc',
-  '.inetloc',
-  '.url',
-  '.mobileconfig',
-  '.osax',
-  '.kext',
-  '.plugin',
-  '.bundle',
-]);
+// Allowlist: only plain documents open in their default app; everything else (unknown types,
+// scripts, bundles, macro-enabled Office files, .py via Python Launcher, .html/.svg in the browser)
+// is revealed in Finder, so a Cmd-click never launches code.
+const DOCUMENT_EXT = new Set(
+  (
+    'pdf png jpg jpeg gif webp heic heif tiff tif bmp ico ' +
+    'txt md markdown log csv tsv json jsonl yaml yml toml ini xml ' +
+    'ts tsx js jsx mjs cjs css scss go rs java kt swift c h cpp hpp ' +
+    'doc docx xls xlsx ppt pptx pages numbers key rtf odt ods odp ' +
+    'mp3 m4a wav aac flac mp4 m4v mov'
+  )
+    .split(' ')
+    .map((ext) => `.${ext}`)
+);
+// Finder alias files are not symlinks: realpath keeps them, `open` follows them to their target
+const ALIAS_MAGIC = Buffer.from('book\0\0\0\0mark', 'latin1');
+
+const isAliasFile = (file) => {
+  const head = Buffer.alloc(ALIAS_MAGIC.length);
+  const fd = fs.openSync(file, 'r');
+  try {
+    fs.readSync(fd, head, 0, head.length, 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return head.equals(ALIAS_MAGIC);
+};
 
 const realRoot = (dir) => {
   try {
@@ -89,12 +86,19 @@ export function resolveOpenTarget(input, cwd, roots = defaultRoots()) {
     throw httpError(403, 'Only files under the home or temp directory can be opened');
   }
   const stat = fs.statSync(real);
-  // symlinks are resolved, so a link named report.pdf pointing at an .app is judged by the .app
-  const launchable =
-    LAUNCHABLE_EXT.has(path.extname(real).toLowerCase()) ||
-    (stat.isFile() && (stat.mode & 0o111) !== 0);
-  return { path: real, reveal: launchable };
+  const ext = path.extname(real).toLowerCase();
+  // symlinks are resolved, so a link named report.pdf pointing at an .app is judged by the .app;
+  // folders with an extension are bundles (.app, .xpc, .workflow ...)
+  const safe = stat.isDirectory()
+    ? !ext
+    : DOCUMENT_EXT.has(ext) && (stat.mode & 0o111) === 0 && !isAliasFile(real);
+  return { path: real, reveal: !safe };
 }
+
+const openSchema = z.object({
+  path: z.string().min(1).max(4096),
+  cwd: z.string().max(4096).optional(),
+});
 
 router.post('/open', openLimiter, (req, res) => {
   if (!isLoopbackOrigin(req.headers.origin)) {
@@ -103,7 +107,9 @@ router.post('/open', openLimiter, (req, res) => {
   if (process.platform !== 'darwin') {
     return res.status(501).json({ error: 'Opening files is only supported on macOS' });
   }
-  const { path: input, cwd } = req.body || {};
+  const body = openSchema.safeParse(req.body ?? {});
+  if (!body.success) return res.status(400).json({ error: 'path is invalid' });
+  const { path: input, cwd } = body.data;
   let target;
   try {
     target = resolveOpenTarget(input, cwd);
