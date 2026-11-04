@@ -63,7 +63,7 @@ describe('TitleBar view toggles (#144)', () => {
   });
 
   it('highlights the open view, also when opened by deep link', () => {
-    renderAt('/board?repo=hpmartini/DevHub&agent=job1');
+    renderAt('/board?repo=hpmartini/Orkumo&agent=job1');
     expect(pressed()).toEqual(['Board']);
   });
 
