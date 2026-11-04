@@ -261,6 +261,21 @@ describe('usageService - claude limits', () => {
     });
   });
 
+  it('a plan without a 5h window (statusline has no five_hour) yields fiveHour null (#184)', async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'usage-no5h-'));
+    const limitsFile = path.join(tmp, 'snap.json');
+    fs.writeFileSync(
+      limitsFile,
+      JSON.stringify({
+        capturedAt: NOW,
+        rate_limits: { seven_day: { used_percentage: 7, resets_at: NOW / 1000 + 3600 } },
+      })
+    );
+    const limits = await claudeLimits({ limitsFile }, NOW);
+    expect(limits.fiveHour).toBeNull();
+    expect(limits.weekly).toMatchObject({ usedPercent: 7 });
+  });
+
   it('has no limits without a source', async () => {
     expect(await claudeLimits({}, NOW)).toBeNull();
   });
