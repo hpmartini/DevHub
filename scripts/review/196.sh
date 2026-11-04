@@ -18,8 +18,8 @@ trap cleanup EXIT INT TERM
 
 [ -d node_modules ] || bun install
 
-echo "== Remaining old names (only persisted/technical identifiers expected)"
-git grep -n -i "devorbit\|devhub\|dev orbit" -- . ':!briefings' ':!graphify-out' ':!CHANGELOG.md' ':!docs/landing-evidence' | wc -l
+echo "== Remaining old names (only persisted/technical identifiers expected; categorized in docs/evidence/196/ac1-restliste.md)"
+git grep -n -i "devorbit\|devhub\|dev orbit" -- . ':!briefings' ':!graphify-out' ':!CHANGELOG.md' ':!docs/landing-evidence' ':!docs/evidence/196' | wc -l
 
 bunx vitest run test/electronUserData.test.js test/board.test.ts test/boardService.test.js \
   test/agentCardOrigin.test.ts utils/directoryGroups.test.ts test/AgentList.test.tsx
