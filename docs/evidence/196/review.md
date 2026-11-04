@@ -10,7 +10,7 @@ Basis `origin/main`, HEAD `ecb4746` (enthält `docs/evidence/196/ac1-restliste.m
 
 ### major
 
-- `scripts/rename-local-dir.sh` (gesamt): Orkumos eigene Settings hängen am Pfad. Projekt-IDs = sha256(Pfad) (`server/services/scannerService.js:14`); reale `settings.json` enthält 5x `PROJECTS/DevOrbitDashboard...` plus daraus abgeleitete IDs (Kontexte, Favoriten, Archiv, Ports). Nach dem Ordner-Umzug sind diese Einträge verwaist (Job: "Lokale Daten überstehen den Wechsel ohne Verlust"). Vorschlag: im Skript (oder einmalig beim Serverstart) `buildIdRemap`/`rewriteSettingsText` aus `server/services/directoryMigration.js` mit Paar `[~/PROJECTS/DevOrbitDashboard, ~/PROJECTS/Orkumo]` anwenden, Backup vorher (Muster existiert dort).
+- `scripts/rename-local-dir.sh` (gesamt): Orkumos eigene Settings hängen am Pfad. Projekt-IDs = sha256(Pfad) (`server/services/scannerService.js:14`); die lokale `settings.json` enthält Pfade unter dem Checkout plus daraus abgeleitete IDs (Kontexte, Favoriten, Archiv, Ports). Nach dem Ordner-Umzug sind diese Einträge verwaist (Job: "Lokale Daten überstehen den Wechsel ohne Verlust"). Vorschlag: im Skript (oder einmalig beim Serverstart) `buildIdRemap`/`rewriteSettingsText` aus `server/services/directoryMigration.js` mit Paar `[~/PROJECTS/DevOrbitDashboard, ~/PROJECTS/Orkumo]` anwenden, Backup vorher (Muster existiert dort).
 - AC-5-Nachweis fehlt: kein `electron-builder --dir`-Build mit Pfad im Log; vorhandener Test prüft nur Konstante und Reihenfolge in main.js.
 
 ### minor
