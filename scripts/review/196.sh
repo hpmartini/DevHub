@@ -25,7 +25,8 @@ bunx vitest run test/electronUserData.test.js test/board.test.ts test/boardServi
   test/agentCardOrigin.test.ts utils/directoryGroups.test.ts test/AgentList.test.tsx
 bash scripts/rename-local-dir.test.sh | tail -1
 
-DEVORBIT_DATA_PATH="$DATA" SERVER_PORT=$SERVER_PORT node server/index.js >"$DATA/server.log" 2>&1 &
+mkdir -p "$DATA/home" # throwaway HOME: no real agents, sessions or projects on screen
+HOME="$DATA/home" DEVORBIT_DATA_PATH="$DATA" SERVER_PORT=$SERVER_PORT node server/index.js >"$DATA/server.log" 2>&1 &
 pids+=($!)
 VITE_PORT=$VITE_PORT SERVER_PORT=$SERVER_PORT bunx vite --port "$VITE_PORT" >"$DATA/vite.log" 2>&1 &
 pids+=($!)
