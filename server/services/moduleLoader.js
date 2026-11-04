@@ -17,7 +17,16 @@ import { getDataPath } from './dataPath.js';
 // Same pattern as ideIdSchema in server/index.js; the id becomes a URL segment.
 const MODULE_ID = /^[a-z0-9-]+$/;
 // Host routes; a module mode at /<id> would shadow them.
-const RESERVED_IDS = new Set(['dashboard', 'usage', 'agents', 'board', 'code', 'pulls']);
+const RESERVED_IDS = new Set([
+  'dashboard',
+  'usage',
+  'agents',
+  'board',
+  'code',
+  'pulls',
+  'api',
+  'assets',
+]);
 
 /**
  * Directory modules are loaded from: DEVHUB_PREMIUM_DIR, else <dataPath>/modules.

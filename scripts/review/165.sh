@@ -31,8 +31,9 @@ if grep -rn "WorkflowView\|/api/workflows\|workflowsUrl" --include='*.ts' --incl
 fi
 
 echo "== DevHub-pro ($PRO_BRANCH): clone, tests, build"
-git -c credential.helper= clone -q --branch "$PRO_BRANCH" \
-  "https://x-access-token:$(gh auth token)@github.com/hpmartini/DevHub-pro.git" "$TMP/pro"
+# Token via credential helper: stays out of argv and out of the clone's .git/config
+git -c credential.helper= -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$(gh auth token)"; }; f' \
+  clone -q --branch "$PRO_BRANCH" https://github.com/hpmartini/DevHub-pro.git "$TMP/pro"
 (cd "$TMP/pro" && bun install --silent && bun run test && bun run build)
 
 # Board source and project dirs from the main checkout's settings, so the view shows the real MACC board
