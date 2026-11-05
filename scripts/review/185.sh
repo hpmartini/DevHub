@@ -16,6 +16,15 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 [ -d node_modules ] || bun install
+# bun skips electron's postinstall, so a fresh install has no binary yet
+if ! node -e "require('electron')" 2>/dev/null; then
+  node node_modules/electron/install.js # downloads into the cache
+  # shortcut: electron's extract-zip dies silently under Node 26; ditto unpacks the cached zip (macOS only)
+  ver=$(node -p "require('./node_modules/electron/package.json').version")
+  zip=$(find "$HOME/Library/Caches/electron" -name "electron-v$ver-darwin-$(uname -m).zip" | head -1)
+  rm -rf node_modules/electron/dist && ditto -x -k "$zip" node_modules/electron/dist
+  printf 'Electron.app/Contents/MacOS/Electron' >node_modules/electron/path.txt
+fi
 
 bunx vitest run test/browserToolbar.test.tsx test/pullRequestsView.test.tsx
 bunx tsc --noEmit
