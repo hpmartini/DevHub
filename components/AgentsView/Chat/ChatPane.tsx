@@ -34,6 +34,13 @@ const reducer = (state: ChatState, action: Action): ChatState =>
 const iconBtn =
   'p-1 rounded text-gray-400 hover:text-white hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-blue-400 disabled:opacity-40 shrink-0';
 
+// A focus or active-pane change re-labels the top bar (keys, model) and can reflow the panes
+// between mousedown and mouseup, swallowing the click; header buttons act without either
+const keepFocus = (e: React.MouseEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
+};
+
 interface ChatPaneProps {
   session: AgentSession;
   active: boolean;
@@ -160,6 +167,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <button
             type="button"
             onClick={stopTurn}
+            onMouseDown={keepFocus}
             className={iconBtn}
             title="Stop this turn (Esc)"
             aria-label="Stop this turn"
@@ -171,6 +179,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           type="button"
           disabled={!state.sessionId}
           onClick={() => state.sessionId && onOpenInTerminal(state.sessionId)}
+          onMouseDown={keepFocus}
           className={iconBtn}
           title="Open in terminal: ends the chat and resumes the session with claude --resume"
           aria-label="Open in terminal"
@@ -181,6 +190,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <button
             type="button"
             onClick={onMaximize}
+            onMouseDown={keepFocus}
             className={iconBtn}
             title="Own tab"
             aria-label="Move chat to its own tab"
@@ -191,6 +201,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         <button
           type="button"
           onClick={onClose}
+          onMouseDown={keepFocus}
           className={iconBtn}
           title="End chat and close"
           aria-label="End chat and close"

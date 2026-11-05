@@ -115,6 +115,13 @@ describe('chatService - buildChatArgs', () => {
     ]);
   });
 
+  it('maps the settings mode `default` to the CLI mode `manual`', () => {
+    expect(buildChatArgs({ cwd: '/p', permissionMode: 'default' }).slice(9)).toEqual([
+      '--permission-mode',
+      'manual',
+    ]);
+  });
+
   it('maps options to flags as separate arguments', () => {
     const args = buildChatArgs({
       cwd: '/p',

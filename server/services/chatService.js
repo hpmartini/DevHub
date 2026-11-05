@@ -103,7 +103,12 @@ export function buildChatArgs(safe) {
     'stdio',
   ];
   if (safe.model) args.push('--model', safe.model);
-  if (safe.permissionMode) args.push('--permission-mode', safe.permissionMode);
+  // CLI 2.1.x has no `default` mode any more; its equivalent (ask for every tool) is `manual`
+  if (safe.permissionMode)
+    args.push(
+      '--permission-mode',
+      safe.permissionMode === 'default' ? 'manual' : safe.permissionMode
+    );
   if (safe.skipPermissions) args.push('--dangerously-skip-permissions');
   if (safe.resume) args.push('--resume', safe.resume);
   if (safe.continue) args.push('--continue');

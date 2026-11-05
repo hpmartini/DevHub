@@ -29,6 +29,7 @@ interface AgentSettingsPanelProps {
 const PERMISSION_MODES = [
   '',
   'default',
+  'manual',
   'plan',
   'acceptEdits',
   'dontAsk',

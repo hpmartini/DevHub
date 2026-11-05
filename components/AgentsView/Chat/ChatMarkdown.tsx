@@ -9,7 +9,7 @@ const components: Components = {
   h3: (p) => <h3 className="text-sm font-semibold text-gray-100 mt-3 mb-1.5" {...p} />,
   p: (p) => <p className="my-2 leading-relaxed" {...p} />,
   ul: (p) => <ul className="my-2 pl-5 list-disc space-y-0.5" {...p} />,
-  ol: (p) => <ol className="my-2 pl-5 list-decimal space-y-0.5" {...p} />,
+  ol: (p) => <ol className="my-2 pl-8 list-decimal space-y-0.5" {...p} />,
   a: (p) => (
     <a
       className="text-blue-300 underline hover:text-blue-200"
