@@ -61,19 +61,20 @@ curl -s -D - -o /dev/null "${FWD[@]}" -H 'Origin: capacitor://localhost' -H "X-D
 echo "ok   CORS capacitor://localhost"
 
 step "AC-4 DevHub-pro $PRO_BRANCH from a fresh clone, built against this checkout"
-git clone -q --depth 1 -b "$PRO_BRANCH" "https://x-access-token:$(gh auth token)@github.com/hpmartini/DevHub-pro.git" "$TMP/pro"
+gh repo clone hpmartini/DevHub-pro "$TMP/pro" -- -q --depth 1 -b "$PRO_BRANCH"
 (cd "$TMP/pro/apps/ios" && bun install --frozen-lockfile >/dev/null && DEVHUB_DIR="$ROOT" bun run sim "$SIM" "$TMP/dd")
 
-VITE_PORT=$VITE_PORT SERVER_PORT=$PORT bunx vite --port "$VITE_PORT" >"$TMP/vite.log" 2>&1 &
+# DEVORBIT_REMOTE keeps Vite on 127.0.0.1: its proxy looks like loopback to the token gate
+DEVORBIT_REMOTE=true VITE_PORT=$VITE_PORT SERVER_PORT=$PORT bunx vite --port "$VITE_PORT" >"$TMP/vite.log" 2>&1 &
 pids+=($!)
 for _ in $(seq 1 30); do curl -sf -o /dev/null "http://localhost:$VITE_PORT/" && break; sleep 1; done
 
 cat <<MSG
 
 Sichtprüfung: http://localhost:$VITE_PORT/   (kein Login; API auf :$PORT, Remote-Zugang an)
-  - Admin Panel → "iOS-App": Adresse, Token ($TOKEN), devorbit://pair-Link, QR-Code
+  - Admin Panel → "iOS-App": Adresse, Token, devorbit://pair-Link, QR-Code
 Simulator-E2E (braucht tailscale serve vor :$PORT und eine laufende Agent-Session, siehe apps/ios/README.md in DevHub-pro):
-  scripts/ios-e2e.sh "$SIM" https://<mac>.<tailnet>.ts.net:8443 http://127.0.0.1:$PORT /tmp/ios-e2e <agent-id>
+  cd <DevHub-pro-Checkout>/apps/ios && bun run sync && scripts/ios-e2e.sh "$SIM" https://<mac>.<tailnet>.ts.net:8443 http://127.0.0.1:$PORT /tmp/ios-e2e <agent-id>
 Beenden: Ctrl+C
 MSG
 wait
