@@ -136,7 +136,9 @@ describe('agentService - output parsing', () => {
 describe('agentService - state helpers', () => {
   it('derives display states', () => {
     expect(deriveDisplayState({ kind: 'interactive' })).toBe('interactive');
-    expect(deriveDisplayState({ kind: 'background', state: 'working' })).toBe('working');
+    expect(
+      deriveDisplayState({ kind: 'background', state: 'working', status: 'busy', tempo: 'active' })
+    ).toBe('working');
     expect(deriveDisplayState({ kind: 'background', state: 'blocked' })).toBe('needs-input');
     expect(deriveDisplayState({ kind: 'background', state: 'failed' })).toBe('failed');
     expect(deriveDisplayState({ kind: 'background', state: 'stopped' })).toBe('stopped');
@@ -167,7 +169,7 @@ describe('agentService - state helpers', () => {
   });
 
   it('slugs project directories like Claude Code does', () => {
-    expect(projectSlug('/home/user/DevHub')).toBe('-home-user-DevHub');
+    expect(projectSlug('/home/user/Orkumo')).toBe('-home-user-Orkumo');
   });
 });
 

@@ -157,8 +157,8 @@ export const AgentSettingsPanel: React.FC<AgentSettingsPanelProps> = ({
                     onUpdate({ cardDetails: e.target.value as AgentViewSettings['cardDetails'] })
                   }
                 >
-                  <option value="hover">On hover or keyboard selection</option>
-                  <option value="click">Only when kept open (context menu)</option>
+                  <option value="click">On click or keyboard selection</option>
+                  <option value="hover">On hover (keyboard selection while not hovering)</option>
                   <option value="always">Always</option>
                 </select>
               </div>
@@ -488,7 +488,7 @@ export const AgentSettingsPanel: React.FC<AgentSettingsPanelProps> = ({
                 checked={settings.disabled}
                 onChange={(e) => onUpdate({ disabled: e.target.checked })}
               />
-              Hide the agent view in DevOrbit (mirrors the CLI `disableAgentView` setting)
+              Hide the agent view in Orkumo (mirrors the CLI `disableAgentView` setting)
             </label>
             {userSettings?.disableAgentView && (
               <div className="text-xs text-yellow-300">

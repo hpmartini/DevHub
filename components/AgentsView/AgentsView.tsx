@@ -51,7 +51,7 @@ import {
 } from '../../services/agentsApi';
 import { fetchRepoPath } from '../../services/boardApi';
 import { confirmDelete } from '../../utils/agentDelete';
-import { agentFolder, boardUrl, codeUrl, workflowsUrl } from '../../utils/codeTarget';
+import { agentFolder, boardUrl, codeUrl, modeUrl } from '../../utils/codeTarget';
 import {
   parseDispatchInput,
   parseFilter,
@@ -83,6 +83,7 @@ import {
 } from '../../utils/agentSessions';
 import { AgentList, AgentRowAction } from './AgentList';
 import { RailNav, ProjectsSection, RailNavProps } from './ProjectsRail';
+import { ModeSwitcher } from '../ModeSwitcher';
 import { AgentSummaryBar, AgentFilterBar } from './AgentSummaryBar';
 import { PullRequestsPanel } from './PullRequestsPanel';
 import { PullRequestsDataContext, type PullRequestsPageProps } from './PullRequestsPage';
@@ -607,7 +608,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       attachPane(id);
       setSelectedKey(id);
       setNarrowWorkspace(true);
-      // From board/code/workflows/dashboard: the tab only shows on the agents route
+      // From board/code/module modes/dashboard: the tab only shows on the agents route
       if (!active) onOpenView();
     },
     [attachPane, active, onOpenView]
@@ -1353,6 +1354,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   // Row / group menus
   // ---------------------------------------------------------------------
 
+  const scopedModes = useMemo(() => nav.modes?.filter((m) => m.scoped) ?? [], [nav.modes]);
   const rowActions = useCallback(
     (session: AgentSession): AgentRowAction[] => {
       const bg = session.kind === 'background';
@@ -1378,16 +1380,16 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
             if (slug) navigate(boardUrl(slug, session.id));
           },
         },
-        {
-          id: 'workflow',
-          label: 'Show Workflow',
-          // Only agents started for a board issue run through mw
+        ...scopedModes.map((m) => ({
+          id: `mode:${m.id}`,
+          label: `Show ${m.label}`,
+          // Only agents started for a board issue have something to show in a scoped mode
           disabled: !contexts[session.id]?.repo?.slug || !issuesByAgent?.get(session.id)?.length,
           onSelect: () => {
             const slug = contexts[session.id]?.repo?.slug;
-            if (slug) navigate(workflowsUrl(slug, session.id));
+            if (slug) navigate(modeUrl(m.id)(slug, session.id));
           },
-        },
+        })),
         {
           // Replaces the card chevron (#159)
           id: 'details',
@@ -1448,6 +1450,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       issuesByAgent,
       expandedSessions,
       toggleExpandedSession,
+      scopedModes,
     ]
   );
 
@@ -1483,11 +1486,11 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
               label: 'View Board',
               onSelect: () => navigate(boardUrl(groupRepoSlug(group, contexts)!)),
             },
-            {
-              id: 'view-workflows',
-              label: 'View Workflows',
-              onSelect: () => navigate(workflowsUrl(groupRepoSlug(group, contexts)!)),
-            },
+            ...scopedModes.map((m) => ({
+              id: `mode:${m.id}`,
+              label: `View ${m.label}`,
+              onSelect: () => navigate(modeUrl(m.id)(groupRepoSlug(group, contexts)!)),
+            })),
           ]
         : []),
       {
@@ -1526,6 +1529,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       contexts,
       openIssueDialog,
       openComposer,
+      scopedModes,
     ]
   );
 
@@ -1739,7 +1743,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         <AlertTriangle size={32} className="text-yellow-500" />
         <div className="text-gray-200 font-medium">Claude Code CLI not found</div>
         <div className="text-sm">
-          Install it on the machine running the DevOrbit server, then run{' '}
+          Install it on the machine running the Orkumo server, then run{' '}
           <code className="text-blue-300">claude</code> once to sign in.
         </div>
         <pre className="text-xs bg-gray-950 border border-gray-800 rounded p-3">
@@ -1762,15 +1766,15 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         className={`relative ${active ? 'flex' : 'hidden md:flex'} flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1.5 border-b border-gray-800 shrink-0`}
       >
         <button
-          onClick={nav.onOpenDashboard}
+          onClick={nav.onOpenContextDashboard}
           className="p-1 -m-1 rounded text-blue-300 hover:text-white hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cursor"
-          title="Dashboard"
-          aria-label="Open dashboard"
+          title="Dashboard of this context"
+          aria-label="Open context dashboard"
         >
           <Bot size={18} />
         </button>
+        <ModeSwitcher modes={nav.modes} />
         <div className="min-w-0 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <div className="text-sm font-semibold leading-tight">Agents</div>
           <AgentSummaryBar
             counts={{
               ...counts,

@@ -38,7 +38,8 @@ CAP='@capa''citor' # split so this script is not a match of its own (and of the 
 step "AC-2 no iOS project, no $CAP"
 [ -z "$(git ls-files ios capacitor.config.json)" ] || fail "ios/ or capacitor.config.json tracked"
 echo "ios/, capacitor.config.json: not tracked"
-if git grep -n "$CAP" -- ':!docs' ':!briefings'; then fail "$CAP found"; fi
+# TASK.md (from main) only logs an old tsc message naming the package: no dependency, no import
+if git grep -n "$CAP" -- ':!docs' ':!briefings' ':!TASK.md'; then fail "$CAP found"; fi
 echo "$CAP: no match"
 
 step "AC-3 token gate (throwaway server :$PORT, data in $TMP/data)"

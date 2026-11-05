@@ -13,9 +13,9 @@ import {
 } from 'lucide-react';
 import type { AgentSession, BoardIssueDetails, BoardItem, BoardStatusOption } from '../../types';
 import toast from 'react-hot-toast';
-import { fetchIssueDetails, sendWorkflowGo } from '../../services/boardApi';
+import { fetchIssueDetails, sendPollGo } from '../../services/boardApi';
 import { deriveWorkflowState, isWorkflowItem } from '../../utils/workflowStage.js';
-import { GoButton, goDoneText, goLabel } from '../WorkflowView/GoButton';
+import { GoButton, goDoneText, goLabel } from './GoButton';
 import { issueKey, itemKey, type AgentIssueLink } from '../../utils/board';
 import { AgentGlyph, CheckIcon, ItemIcon, LabelChip } from './BoardCard';
 import {
@@ -315,14 +315,21 @@ export const BoardItemPanel: React.FC<BoardItemPanelProps> = ({
           </dd>
         </dl>
 
-        {editable && <FlowControls labels={item.labels} repoOptions={repoOptions} onSave={save} />}
+        {editable && (
+          <FlowControls
+            labels={item.labels}
+            repoOptions={repoOptions}
+            onSave={save}
+            issueUrl={item.url}
+          />
+        )}
 
         {editable && pollGo && (
           <GoButton
             label={goLabel(pollGo)}
             onGo={() =>
-              sendWorkflowGo(item.itemId, pollGo).then(
-                () => void toast.success(goDoneText(key, pollGo)),
+              sendPollGo(item.itemId).then(
+                (res) => void toast.success(goDoneText(key, pollGo, res.start)),
                 (e) => void toast.error(e instanceof Error ? e.message : 'Poll nicht gestartet')
               )
             }

@@ -138,6 +138,8 @@ export type AgentProcessStatus = 'busy' | 'waiting' | 'idle';
 /** Display state used for icons and grouping in the agent view */
 export type AgentDisplayState =
   | 'working'
+  /** CLI says working, but the turn only waits on its own background task (shell, monitor) */
+  | 'waiting'
   | 'needs-input'
   | 'idle'
   | 'completed'
@@ -487,7 +489,7 @@ export const DEFAULT_AGENT_VIEW_SETTINGS: AgentViewSettings = {
   collapsedGroups: [],
   notifications: true,
   desktopNotifications: false,
-  cardDetails: 'hover',
+  cardDetails: 'click',
   cardDensity: 'comfortable',
   cardFields: DEFAULT_AGENT_CARD_FIELDS,
   disabled: false,
@@ -503,13 +505,6 @@ export interface BoardSource {
   owner: string;
   /** Project number, e.g. 4 for users/hpmartini/projects/4 (MACC) */
   number: number;
-}
-
-// Workflows (#87, mw 7 #136): card details; the stage rule lives in utils/workflowStage.js
-export interface WorkflowDetails {
-  docs: { name: string; path: string }[];
-  /** image URLs from issue and PR comments (review screenshots) */
-  screenshots: string[];
 }
 
 export interface BoardStatusOption {
@@ -672,7 +667,7 @@ export interface ProjectContext {
 }
 export type BoardSwimlaneMode = 'parent' | 'repo' | 'none';
 
-/** Persisted board preferences. Slice keys are `${kind}:${value}`, e.g. "repo:hpmartini/DevHub". */
+/** Persisted board preferences. Slice keys are `${kind}:${value}`, e.g. "repo:hpmartini/Orkumo". */
 export interface BoardSettings {
   source: BoardSource;
   favorites: string[];

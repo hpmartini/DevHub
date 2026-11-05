@@ -8,7 +8,6 @@ import {
   workflowMode,
   workflowSwitches,
 } from '../utils/workflowStage.js';
-import { deriveNode } from '../utils/workflowGraph.js';
 
 const SID = 'b9696574-1525-436d-b809-9d7ebb737e8e';
 const comment = (body, createdAt = '2026-10-25T10:00:00Z', login = 'hpmartini') => ({
@@ -17,7 +16,7 @@ const comment = (body, createdAt = '2026-10-25T10:00:00Z', login = 'hpmartini') 
   author: { login },
 });
 const TRUSTED = ['hpmartini'];
-// marker lines as mw 7.0.2 board.py writes them (cf. hpmartini/DevHub#136)
+// marker lines as mw 7.0.2 board.py writes them (cf. hpmartini/Orkumo#136)
 const startC = (mode = 'default', sw = 'dynamic=on delegate=off review=off') =>
   comment(`Abgeholt\n\n<!-- mw-board:start session=${SID} mode=${mode} ${sw} -->`);
 const briefedC = comment(
@@ -310,10 +309,9 @@ describe('mw 7 stations (AC-1)', () => {
       'default.interview',
     ],
   ];
-  it.each(cases)('%s', (_, i, status, stage, nodeId) => {
-    const s = deriveWorkflowState(i, status);
-    expect(s.stage).toBe(stage);
-    expect(deriveNode(i, s).id).toBe(nodeId);
+  // the last column (graph node) is checked by the Workflows module, which owns the graph (#165)
+  it.each(cases)('%s', (_, i, status, stage) => {
+    expect(deriveWorkflowState(i, status).stage).toBe(stage);
   });
 
   it('real #136 markers (start, ask, resumed, briefed, goal) land on Umsetzung', () => {
@@ -340,26 +338,9 @@ describe('mw 7 stations (AC-1)', () => {
       stage: 'building',
       briefingPath: 'briefings/2026-10-29-workflow-mw7.md',
     });
-    expect(deriveNode(i, s)).toEqual({ id: 'default.impl', round: null });
     // the same issue one step earlier: the contract waits for GO
     expect(deriveWorkflowState(item({ comments: real.slice(0, 5) }), 'In Progress').go).toEqual({
       kind: 'build',
-    });
-  });
-
-  it('feedback rounds count on the contract station', () => {
-    const i = item({
-      comments: [
-        startC(),
-        briefedC,
-        at('fed', T(13)),
-        at('briefed', T(14), 'B', 'path=b.md'),
-        at('fed', T(15)),
-      ],
-    });
-    expect(deriveNode(i, deriveWorkflowState(i, 'In Progress'))).toEqual({
-      id: 'default.contract',
-      round: 'Runde 3',
     });
   });
 });
