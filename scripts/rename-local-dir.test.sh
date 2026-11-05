@@ -4,14 +4,14 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT
-export HOME="$T/home"
+export HOME="$T/home_x" # "_" too: Claude Code maps every non-alphanumeric character to "-"
 mkdir -p "$HOME/PROJECTS/Magos/config"
 SRC="$HOME/PROJECTS/DevOrbitDashboard"
 git init -q "$SRC"
 git -C "$SRC" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
 git -C "$SRC" remote add origin git@github.com:hpmartini/DevHub.git
 git -C "$SRC" worktree add -q "$SRC/.claude/worktrees/wt1" -b wt1
-key=$(printf '%s' "$SRC" | sed 's#[/.]#-#g')
+key=$(printf '%s' "$SRC" | sed 's#[^A-Za-z0-9]#-#g')
 mkdir -p "$HOME/.claude/projects/$key/memory" "$HOME/.claude/projects/$key--claude-worktrees-wt1"
 echo '{ "devorbitdashboard": "'"$SRC"'" }' >"$HOME/PROJECTS/Magos/config/projekt-repos.json"
 # Orkumo settings keyed by project ID (sha256(path)) plus a sibling folder that must stay untouched
@@ -28,7 +28,7 @@ echo '{ "favorites": ["'"$OLD_ID"'"], "cwd": "'"$SRC"'/src", "other": "'"$SRC"'-
 "$here/rename-local-dir.sh" # idempotent second run
 
 DST="$HOME/PROJECTS/Orkumo"
-nkey=$(printf '%s' "$DST" | sed 's#[/.]#-#g')
+nkey=$(printf '%s' "$DST" | sed 's#[^A-Za-z0-9]#-#g')
 fail() { echo "FAIL: $*"; exit 1; }
 [[ ! -e "$SRC" && -d "$DST" ]] || fail "folder not moved"
 [[ "$(git -C "$DST" remote get-url origin)" == "git@github.com:hpmartini/Orkumo.git" ]] || fail "remote"

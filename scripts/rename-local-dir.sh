@@ -22,7 +22,7 @@ NODE_SCRIPT="$HERE/remap-project-path.mjs"
 [[ "$HERE" == "$SRC"/* ]] && NODE_SCRIPT="$DST${HERE#"$SRC"}/remap-project-path.mjs" # moves with the folder
 
 run() { if ((DRY)); then echo "would: $*"; else echo "+ $*"; "$@"; fi; }
-key() { printf '%s' "$1" | sed 's#[/.]#-#g'; } # Claude Code's folder key for a cwd
+key() { printf '%s' "$1" | sed 's#[^A-Za-z0-9]#-#g'; } # Claude Code's folder key for a cwd
 
 if [[ -d "$SRC" && -e "$DST" ]]; then echo "both $SRC and $DST exist, resolve by hand" >&2; exit 1; fi
 if [[ ! -d "$SRC" && ! -d "$DST" ]]; then echo "neither $SRC nor $DST exists" >&2; exit 1; fi
