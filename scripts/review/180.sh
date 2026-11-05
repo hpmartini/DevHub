@@ -19,7 +19,8 @@ cleanup() {
   for p in ${pids[@]+"${pids[@]}"}; do pkill -P "$p" 2>/dev/null || true; kill "$p" 2>/dev/null || true; done
   rm -rf "$TMP"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 0' INT TERM # Ctrl+C is the normal end of the review, not a failure
 
 step() { printf '\n== %s\n' "$*"; }
 
