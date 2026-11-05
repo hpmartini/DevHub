@@ -2,20 +2,22 @@
 
 Befehl: `git grep -n -i "devorbit\|devhub\|dev orbit" -- . ':!briefings' ':!graphify-out' ':!CHANGELOG.md' ':!docs/landing-evidence' ':!docs/evidence/196'`
 
-Treffer: 262, davon unklassifiziert: 0. `docs/landing-evidence` ist ein historisches Lighthouse-Artefakt und bleibt unverändert.
+Treffer: 285, davon unklassifiziert: 0. `docs/landing-evidence` ist ein historisches Lighthouse-Artefakt und bleibt unverändert.
 
 | Anzahl | Guardrail-Kategorie                                                                                                      |
 | -----: | :----------------------------------------------------------------------------------------------------------------------- |
 |     13 | Rename-Skript und Review-Skript (#196, nennen alten Pfad/Repo absichtlich)                                               |
 |      3 | Electron userData-Pin (alter Ordnername, damit Daten bleiben)                                                            |
-|     62 | Env-Variablen (DEVORBIT*\*, DEVHUB*\*)                                                                                   |
-|     50 | localStorage-/Server-UI-Schlüssel (devOrbit*, devorbit-*, devorbit.\*)                                                   |
-|     11 | Datenordner/-dateien (devorbit-data, devorbit-rate-limits.json)                                                          |
+|      4 | Fremd-Repo hpmartini/DevHub-pro (eigenes Repo, nicht Teil von #196)                                                      |
+|      2 | Terminal-Aufnahme (byte-genaue Fixture, aufgezeichneter alter Checkout-Pfad)                                             |
+|     76 | Env-Variablen (DEVORBIT*\*, DEVHUB*\*)                                                                                   |
+|     51 | localStorage-/Server-UI-Schlüssel (devOrbit*, devorbit-*, devorbit.\*)                                                   |
+|     12 | Datenordner/-dateien (devorbit-data, devorbit-rate-limits.json)                                                          |
 |      9 | Bundle-/App-IDs (com.devorbit.dashboard, de.martinilabs.devorbit)                                                        |
 |     24 | URL-Schema devorbit:// (gekoppelte iPhones, QR-Links)                                                                    |
 |      7 | Header X-DevOrbit-Token (gekoppelte Clients)                                                                             |
 |     40 | postMessage-Typen, MIME, Vite-Plugin in Nutzerprojekten (devorbit-console/-network, x-devorbit-\*, devorbit-vite-plugin) |
-|     32 | Docker/DB/Infra (Netz, Volumes, Container, DB devorbit, ghcr devhub-\*, Tunnel)                                          |
+|     33 | Docker/DB/Infra (Netz, Volumes, Container, DB devorbit, ghcr devhub-\*, Tunnel)                                          |
 |      8 | Interne Port-/CLI-Namen (PORTS.devhub, --devorbit-server-port)                                                           |
 |      3 | Bekannte schwache Passwörter (alter Default devOrbit123 bleibt gesperrt)                                                 |
 
@@ -45,6 +47,26 @@ electron/constants.js:14:export const LEGACY_USER_DATA_DIR = 'devorbit-dashboard
 test/electronUserData.test.js:8:    expect(LEGACY_USER_DATA_DIR).toBe('devorbit-dashboard');
 ```
 
+## Fremd-Repo hpmartini/DevHub-pro (eigenes Repo, nicht Teil von #196)
+
+```
+scripts/review/165.sh:2:# Review #165: Orkumo without and with the Workflows premium module (hpmartini/DevHub-pro).
+scripts/review/165.sh:4:# Builds DevHub-pro in a temp dir, runs both test suites, then starts server + Vite on spare
+scripts/review/165.sh:33:echo "== DevHub-pro ($PRO_BRANCH): clone, tests, build"
+scripts/review/165.sh:36:  clone -q --branch "$PRO_BRANCH" https://github.com/hpmartini/DevHub-pro.git "$TMP/pro"
+```
+
+## Terminal-Aufnahme (byte-genaue Fixture, aufgezeichneter alter Checkout-Pfad)
+
+```
+test/fixtures/claude-logs-question.txt:1:78[2J[H[H
+[1B[38;2;215;119;87m ▐[48;2;0;0;0m▛███▛█[12G[39m[49m[1mClaude Code[24G[22m[38;2;153;153;153mv2.1.318
+[1B[38;2;215;119;87m▝▜[48;2;0; …
+test/fixtures/claude-logs-table.txt:1:78[2J[H[H
+[1B[38;2;215;119;87m ▐[48;2;0;0;0m▛███▛█[12G[39m[49m[1mClaude Code[24G[22m[38;2;153;153;153mv2.1.318
+[1B[38;2;215;119;87m▝▜[48;2;0;0;0 …
+```
+
 ## Env-Variablen (DEVORBIT*\*, DEVHUB*\*)
 
 ```
@@ -53,13 +75,13 @@ test/electronUserData.test.js:8:    expect(LEGACY_USER_DATA_DIR).toBe('devorbit-
 .env.example:79:# DEVHUB_PREMIUM_DIR=
 .github/workflows/release.yml:117:          sed "s/\${DEVHUB_VERSION:-latest}/\${DEVHUB_VERSION:-${TAG#v}}/" docker/docker-compose.release.yml > release-assets/docker-compose.release.yml
 .github/workflows/release.yml:118:          grep -q "devhub-api:\${DEVHUB_VERSION:-${TAG#v}}" release-assets/docker-compose.release.yml
-CLAUDE.md:53:Optional `DEVORBIT_CODEX_HOMES=Label=path,Label=path` lists the Codex accounts for `/usage`. For live Claude limits, wrap the statusline: `statusLine.command` = `bash <repo>/scripts/claude-rate-limits-tap.sh <existing statusline command>`.
+CLAUDE.md:56:Optional `DEVORBIT_CODEX_HOMES=Label=path,Label=path` lists the Codex accounts for `/usage`. For live Claude limits, wrap the statusline: `statusLine.command` = `bash <repo>/scripts/claud …
 README.md:10:- **Usage** (`/usage`): tokens per day, model and provider (Claude Code, Codex accounts via `DEVORBIT_CODEX_HOMES`, MiniMax) and plan limits from local logs.
 README.md:42:# DEVORBIT_CODEX_HOMES=Codex A=~/.codex,Codex B=~/.codex-b
-README.md:92:Security: sessions can only be dispatched into (and `--add-dir` only point at) the project directories configured in the admin panel; the server resolves symlinks before checking. Flags that widen a session's reach (`--dangerously-skip-permissions`, `--allow-dangerously-skip-permissions`, `--settings`, `--mcp-config`, `--plugin-dir`) are refused with `403` unless the server runs with `DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true`.
+README.md:92:Security: sessions can only be dispatched into (and `--add-dir` only point at) the project directories configured in the admin panel; the server resolves symlinks before checking. Flags t …
 README.md:103:DEVORBIT_REMOTE=true bun run server          # oder DEVORBIT_REMOTE=true in .env.local
-README.md:107:- Mit `DEVORBIT_REMOTE=true` braucht jede Anfrage, die nicht direkt von localhost kommt (auch über `tailscale serve`), den Pairing-Token. Er liegt in `<data>/remote-token` (Modus 600) und wird beim ersten Start erzeugt. Der Server lauscht dann nur auf `127.0.0.1`; von außen kommt man ausschließlich über `tailscale serve` heran.
-README.md:109:- Läuft `tailscale serve` auf einem anderen Port als 443 oder unter anderem Namen: `DEVORBIT_REMOTE_URL=https://<mac>.<tailnet>.ts.net:8443` setzen, sonst nimmt die Pairing-Anzeige `https://<MagicDNS-Name>`.
+README.md:107:- Mit `DEVORBIT_REMOTE=true` braucht jede Anfrage, die nicht direkt von localhost kommt (auch über `tailscale serve`), den Pairing-Token. Er liegt in `<data>/remote-token` (Modus 600) un …
+README.md:109:- Läuft `tailscale serve` auf einem anderen Port als 443 oder unter anderem Namen: `DEVORBIT_REMOTE_URL=https://<mac>.<tailnet>.ts.net:8443` setzen, sonst nimmt die Pairing-Anzeige `http …
 README.md:146:Optional `.env` next to the compose file: `POSTGRES_PASSWORD`, `GEMINI_API_KEY`, `DEVORBIT_PORT` (default 3000), `DEVORBIT_PROJECTS_DIR` (default `~/Projects`), `PTY_HOST_HTTP_TOKEN`.
 TASK.md:488:  - Approach: Routing in `App.tsx` und `AgentsView` gelesen. Mit Playwright gegen eine isolierte Server-Instanz geprüft (`DEVORBIT_DATA_PATH`, Ports 3198/3199).
 components/AgentsView/AgentSettingsPanel.tsx:266:                  server. Start it with DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true to enable them.
@@ -74,41 +96,55 @@ docker/docker-compose.release.yml:20:    image: ghcr.io/hpmartini/devhub-api:${D
 docker/docker-compose.release.yml:28:      - ${DEVORBIT_PROJECTS_DIR:-${HOME}/Projects}:/home/coder/Projects
 docs/MODULES.md:7:`DEVHUB_PREMIUM_DIR` if set, otherwise `<dataPath>/modules`:
 docs/MODULES.md:17:DEVHUB_PREMIUM_DIR=/path/to/modules   # contains one subdirectory per module
-docs/MODULES.md:73:`test/fixtures/premium/placeholder` is an empty module that only registers itself. Load it with `DEVHUB_PREMIUM_DIR=$PWD/test/fixtures/premium bun run server` (the `broken-*` siblings there exercise the error path and log errors).
-electron/main.js:488:    DEVORBIT_DATA_PATH: dataPath, // Pass userData path to server for persistent storage
+docs/MODULES.md:121:`test/fixtures/premium/placeholder` is an empty module that only registers itself; `test/fixtures/premium/with-mode` brings a mode. Load it with `DEVHUB_PREMIUM_DIR=$PWD/test/fixtu …
+electron/main.js:489:    DEVORBIT_DATA_PATH: dataPath, // Pass userData path to server for persistent storage
 public/devorbit-vite-plugin.js:24:  if (window.__DEVORBIT_LOGGER__) return;
 public/devorbit-vite-plugin.js:25:  window.__DEVORBIT_LOGGER__ = true;
 public/iframe-logger.js:19:  if (window.__DEVORBIT_LOGGER__) return;
 public/iframe-logger.js:29:  window.__DEVORBIT_LOGGER__ = true;
 scripts/docker-release-smoke.sh:15:export DEVHUB_VERSION=$V DEVORBIT_PORT=3999 DEVORBIT_PROJECTS_DIR="$D/projects" COMPOSE_PROJECT_NAME=devhub-ac3
 scripts/ios-e2e.sh:3:# Needs a running server with DEVORBIT_REMOTE=true and `tailscale serve` in front of it.
-server/index.js:1256:  const url = process.env.DEVORBIT_REMOTE_URL || (dnsName ? `https://${dnsName}` : null);
-server/services/agentService.js:162: * DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true - never on the say-so of a client request.
-server/services/agentService.js:173:  return process.env.DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS === 'true';
-server/services/agentService.js:568: *   server-side opt-in DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true
-server/services/agentService.js:587:      `Option(s) ${requested.join(', ')} are disabled on this server. Start it with DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true to enable them.`
+scripts/review/165.sh:43:echo "== Server :$SERVER_PORT and Vite :$VITE_PORT with DEVHUB_PREMIUM_DIR=$TMP/pro/dist"
+scripts/review/165.sh:44:DEVHUB_PREMIUM_DIR="$TMP/pro/dist" DEVORBIT_DATA_PATH="$TMP/data" SERVER_PORT="$SERVER_PORT" \
+scripts/review/165.sh:61:  ohne Modul:  Skript mit DEVHUB_PREMIUM_DIR=/nonexistent im Server-Aufruf, /workflows -> /dashboard
+scripts/review/181.sh:18:SERVER_PORT=$SERVER_PORT DEVORBIT_DATA_PATH="$TMP/data" node server/index.js >"$TMP/server.log" 2>&1 & PIDS+=($!)
+scripts/review/188.sh:31:DEVORBIT_REMOTE=true SERVER_PORT=$SERVER_PORT node server/index.js >/tmp/review-188-server.log 2>&1 &
+scripts/review/190.sh:24:DEVORBIT_DATA_PATH="$DATA_DIR" SERVER_PORT=$SERVER_PORT node server/index.js >"$DATA_DIR/server.log" 2>&1 &
+server/index.js:1284:  const url = process.env.DEVORBIT_REMOTE_URL || (dnsName ? `https://${dnsName}` : null);
+server/services/agentService.js:165: * DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true - never on the say-so of a client request.
+server/services/agentService.js:176:  return process.env.DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS === 'true';
+server/services/agentService.js:584: *   server-side opt-in DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true
+server/services/agentService.js:603:      `Option(s) ${requested.join(', ')} are disabled on this server. Start it with DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true to enable them.`
 server/services/dataPath.js:22: * 1. DEVORBIT_DATA_PATH env var (set by Electron main process)
 server/services/dataPath.js:29:  if (process.env.DEVORBIT_DATA_PATH) {
 server/services/dataPath.js:30:    return process.env.DEVORBIT_DATA_PATH;
-server/services/moduleLoader.js:21: * Directory modules are loaded from: DEVHUB_PREMIUM_DIR, else <dataPath>/modules.
-server/services/moduleLoader.js:25:  return process.env.DEVHUB_PREMIUM_DIR || path.join(getDataPath(), 'modules');
+server/services/moduleLoader.js:32: * Directory modules are loaded from: DEVHUB_PREMIUM_DIR, else <dataPath>/modules.
+server/services/moduleLoader.js:36:  return process.env.DEVHUB_PREMIUM_DIR || path.join(getDataPath(), 'modules');
 server/services/remoteAccess.js:4: * Opt-in via DEVORBIT_REMOTE=true. The server is then meant to be reached through
 server/services/remoteAccess.js:19:export const isRemoteEnabled = () => process.env.DEVORBIT_REMOTE === 'true';
-server/services/usageService.js:75:    ...parseCodexHomes(env.DEVORBIT_CODEX_HOMES || 'Codex A=~/.codex,Codex B=~/.codex-b'),
-test/agentService.test.js:208:    ).toThrow(/DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS/);
+server/services/usageService.js:80:    ...parseCodexHomes(env.DEVORBIT_CODEX_HOMES || 'Codex A=~/.codex,Codex B=~/.codex-b'),
+test/agentService.test.js:210:    ).toThrow(/DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS/);
+test/boardPollRoute.test.js:39:        DEVORBIT_DATA_PATH: dataDir,
+test/boardPollRoute.test.js:40:        DEVHUB_PREMIUM_DIR: modulesDir,
+test/claudeConfigDir.test.js:25:      DEVORBIT_DATA_PATH: dataDir,
+test/claudeConfigDir.test.js:179:    vi.stubEnv('DEVORBIT_DATA_PATH', dataDir);
+test/fileOpenRoutes.test.js:136:    process.env.DEVORBIT_DATA_PATH = dataDir;
+test/fileOpenRoutes.test.js:137:    process.env.DEVORBIT_REMOTE = 'true';
+test/fileOpenRoutes.test.js:147:      delete process.env.DEVORBIT_REMOTE;
+test/fileOpenRoutes.test.js:148:      delete process.env.DEVORBIT_DATA_PATH;
 test/linkTargetSetting.test.js:11:  vi.stubEnv('DEVORBIT_DATA_PATH', dataDir);
-test/moduleLoader.test.js:98:  const saved = process.env.DEVHUB_PREMIUM_DIR;
-test/moduleLoader.test.js:99:  beforeEach(() => delete process.env.DEVHUB_PREMIUM_DIR);
-test/moduleLoader.test.js:101:    if (saved === undefined) delete process.env.DEVHUB_PREMIUM_DIR;
-test/moduleLoader.test.js:102:    else process.env.DEVHUB_PREMIUM_DIR = saved;
-test/moduleLoader.test.js:105:  it('uses DEVHUB_PREMIUM_DIR, else <dataPath>/modules', () => {
-test/moduleLoader.test.js:107:    process.env.DEVHUB_PREMIUM_DIR = '/x/y';
+test/moduleLoader.test.js:114:  const saved = process.env.DEVHUB_PREMIUM_DIR;
+test/moduleLoader.test.js:115:  beforeEach(() => delete process.env.DEVHUB_PREMIUM_DIR);
+test/moduleLoader.test.js:117:    if (saved === undefined) delete process.env.DEVHUB_PREMIUM_DIR;
+test/moduleLoader.test.js:118:    else process.env.DEVHUB_PREMIUM_DIR = saved;
+test/moduleLoader.test.js:121:  it('uses DEVHUB_PREMIUM_DIR, else <dataPath>/modules', () => {
+test/moduleLoader.test.js:123:    process.env.DEVHUB_PREMIUM_DIR = '/x/y';
 test/remoteAccess.test.js:39:  process.env.DEVORBIT_DATA_PATH = dataDir;
 test/remoteAccess.test.js:40:  process.env.DEVORBIT_REMOTE = 'true';
 test/remoteAccess.test.js:45:  delete process.env.DEVORBIT_REMOTE;
 test/remoteAccess.test.js:46:  delete process.env.DEVORBIT_DATA_PATH;
 test/remoteAccess.test.js:102:    delete process.env.DEVORBIT_REMOTE;
-types.ts:324:  /** Unsafe dispatch flags need DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true on the server */
+types.ts:326:  /** Unsafe dispatch flags need DEVORBIT_AGENTS_ALLOW_UNSAFE_FLAGS=true on the server */
 vite.config.ts:24:      host: env.DEVORBIT_REMOTE === 'true' ? '127.0.0.1' : '0.0.0.0',
 ```
 
@@ -116,19 +152,20 @@ vite.config.ts:24:      host: env.DEVORBIT_REMOTE === 'true' ? '127.0.0.1' : '0.
 
 ```
 TASK.md:136:  - Persist `selectedAppId` to localStorage key `devorbit-last-selected-app`
-TASK.md:489:  - Solution: Close-Button in der Agents-Leiste außerhalb von `/agents`. `attach` öffnet `/agents`, wenn die Ansicht nicht aktiv ist. Die Route (`devOrbitContextRoute`) gehört jetzt zu den Kontext-UI-Daten (`UI_KEYS`, Server-Schema `contextUiSchema`) und wird nach einem Wechsel wiederhergestellt, ohne gemerkte Route `/agents`.
+TASK.md:489:  - Solution: Close-Button in der Agents-Leiste außerhalb von `/agents`. `attach` öffnet `/agents`, wenn die Ansicht nicht aktiv ist. Die Route (`devOrbitContextRoute`) gehört jetzt zu den …
 components/AgentsView/AgentSummaryBar.tsx:156:export const CHIPS_OPEN_KEY = 'devOrbitAgentFilterChipsOpen';
-components/AgentsView/AgentsView.tsx:143:const DISPATCH_CWD_STORAGE_KEY = 'devOrbitAgentDispatchCwd';
-components/AgentsView/AgentsView.tsx:144:const SORT_STORAGE_KEY = 'devOrbitAgentSort';
-components/AgentsView/AgentsView.tsx:145:const REMOTE_STORAGE_KEY = 'devOrbitAgentRemote';
-components/AgentsView/ProjectsRail.tsx:31:const PROJECTS_COLLAPSED_KEY = 'devOrbitAgentProjectsCollapsed';
+components/AgentsView/AgentsView.tsx:144:const DISPATCH_CWD_STORAGE_KEY = 'devOrbitAgentDispatchCwd';
+components/AgentsView/AgentsView.tsx:145:const SORT_STORAGE_KEY = 'devOrbitAgentSort';
+components/AgentsView/AgentsView.tsx:146:const REMOTE_STORAGE_KEY = 'devOrbitAgentRemote';
+components/AgentsView/ProjectsRail.tsx:36:const PROJECTS_COLLAPSED_KEY = 'devOrbitAgentProjectsCollapsed';
 components/BoardView/BoardGrid.tsx:21:const FOLD_KEY = 'devOrbitBoardColumns';
 components/BoardView/BoardView.tsx:42:const VIEW_KEY = 'devOrbitBoardView';
 components/BoardView/IssueCreateModal.tsx:20:const LAST_REPO_KEY = 'devOrbitLastIssueRepo';
 components/CodingView/WebIDEPanel.tsx:284:      return localStorage.getItem('devorbit-copilot-info-dismissed') === 'true';
 components/CodingView/WebIDEPanel.tsx:293:      localStorage.setItem('devorbit-copilot-info-dismissed', 'true');
+components/ContextDialog.tsx:23:export const CONTEXT_DIALOG_SIZE_KEY = 'devOrbitContextDialogSize';
+components/ContextDialog.tsx:24:export const CONTEXT_DIALOG_COLLAPSED_KEY = 'devOrbitContextDialogCollapsed';
 components/ContextTabs.tsx:7:const GROUP_KEY = 'devOrbitContextTabsGrouped';
-components/WorkflowView/WorkflowView.tsx:32:const PROJECTS_KEY = 'devorbit.workflows.projects';
 hooks/useAgentWorkspace.ts:19:export const STORAGE_KEY = 'devOrbitAgentWorkspace.v2';
 hooks/useAgentWorkspace.ts:21:export const LEGACY_STORAGE_KEY = 'devOrbitAgentWorkspace';
 hooks/useApps.ts:5:const LOCALSTORAGE_MIGRATED_KEY = 'devOrbitMigratedToBackend';
@@ -143,11 +180,11 @@ hooks/useApps.ts:44:  localStorage.removeItem('devOrbitNames');
 hooks/useProjectContexts.ts:14:export const ROUTE_KEY = 'devOrbitContextRoute';
 hooks/useProjectContexts.ts:18:const MARKER_KEY = 'devOrbitContextId';
 hooks/useRailPreferences.ts:8:export const STORAGE_KEY = 'devOrbitAgentRail.v1';
-server/index.js:1858:    'devOrbitAgentWorkspace.v2': contextUiValue,
-server/index.js:1859:    devOrbitAgentWorkspace: contextUiValue,
-server/index.js:1860:    'devOrbitAgentRail.v1': contextUiValue,
-server/index.js:1861:    devOrbitContextRoute: contextUiValue,
-server/index.js:1862:    devOrbitShellBrowser: contextUiValue,
+server/index.js:1847:    'devOrbitAgentWorkspace.v2': contextUiValue,
+server/index.js:1848:    devOrbitAgentWorkspace: contextUiValue,
+server/index.js:1849:    'devOrbitAgentRail.v1': contextUiValue,
+server/index.js:1850:    devOrbitContextRoute: contextUiValue,
+server/index.js:1851:    devOrbitShellBrowser: contextUiValue,
 test/BoardGrid.test.tsx:56:  beforeEach(() => localStorage.removeItem('devOrbitBoardColumns'));
 test/projectContexts.test.js:35:    const ui = { 'devOrbitAgentWorkspace.v2': '{"tabs":[1]}' };
 test/projectContexts.test.js:56:    const ui = { 'devOrbitAgentRail.v1': 'rail' };
@@ -177,10 +214,11 @@ docker-compose.yml:164:    name: devorbit-data
 docker/docker-compose.release.yml:29:      - devorbit-data:/app/data
 docker/docker-compose.release.yml:85:  devorbit-data:
 scripts/claude-rate-limits-tap.sh:10:  target="$dir/devorbit-rate-limits.json"
-server/services/usageService.js:63:      limitsFile: path.join(claudeDir, 'devorbit-rate-limits.json'),
-test/usageService.test.js:26:    limitsFile: path.join(FIX, 'claude', 'devorbit-rate-limits.json'),
-test/usageService.test.js:216:    const snap = JSON.parse(fs.readFileSync(path.join(dir, 'devorbit-rate-limits.json'), 'utf8'));
-test/usageService.test.js:219:    expect(fs.readdirSync(dir)).toEqual(['devorbit-rate-limits.json']); // no tmp leftovers
+scripts/review/184.sh:31:if [ ! -f "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/devorbit-rate-limits.json" ]; then
+server/services/usageService.js:67:      limitsFile: path.join(claudeDir, 'devorbit-rate-limits.json'),
+test/usageService.test.js:28:    limitsFile: path.join(FIX, 'claude', 'devorbit-rate-limits.json'),
+test/usageService.test.js:372:    const snap = JSON.parse(fs.readFileSync(path.join(dir, 'devorbit-rate-limits.json'), 'utf8'));
+test/usageService.test.js:375:    expect(fs.readdirSync(dir)).toEqual(['devorbit-rate-limits.json']); // no tmp leftovers
 ```
 
 ## Bundle-/App-IDs (com.devorbit.dashboard, de.martinilabs.devorbit)
@@ -201,7 +239,7 @@ scripts/ios-e2e.sh:23:xcrun simctl uninstall "$UDID" de.martinilabs.devorbit
 
 ```
 DESKTOP.md:300:- [ ] Deep linking (`devorbit://` protocol)
-README.md:111:**2. Koppeln:** Admin Panel → „iOS-App“ zeigt Adresse, Token, den Link `devorbit://pair?…` und denselben Link als QR-Code. QR-Code mit der Kamera-App scannen, den Link auf iPhone/iPad öffnen (AirDrop, Notiz) oder Adresse und Token in der App eingeben. Lehnt der Server den Token ab, fragt die App neu danach.
+README.md:111:**2. Koppeln:** Admin Panel → „iOS-App“ zeigt Adresse, Token, den Link `devorbit://pair?…` und denselben Link als QR-Code. QR-Code mit der Kamera-App scannen, den Link auf iPhone/iPad öf …
 components/RemotePairingSection.tsx:26:  // The iPhone camera opens devorbit:// links from a QR code straight in the app.
 electron/README.md:166:4. **Deep Linking**: Handle `devorbit://` protocol URLs
 index.tsx:25:// iOS app: deep links pair the device (devorbit://pair?…) or open a view (devorbit://open?path=…).
@@ -212,7 +250,7 @@ ios/App/AppUITests/PairingFlowTests.swift:38:        open("devorbit://open?path=
 ios/App/AppUITests/PairingFlowTests.swift:43:            open("devorbit://open?path=\(path)")
 ios/App/AppUITests/PairingFlowTests.swift:64:            open("devorbit://open?path=%2Fagents%3Fattach%3D\(agent)")
 scripts/ios-e2e.sh:26:TEST_RUNNER_PAIR_LINK="devorbit://pair?url=$(enc "$REMOTE")&token=$TOKEN" \
-server/services/remoteAccess.js:100:  return `devorbit://pair?${params.toString()}`;
+server/services/remoteAccess.js:110:  return `devorbit://pair?${params.toString()}`;
 test/RemotePairingSection.test.tsx:5:const LINK = 'devorbit://pair?url=https%3A%2F%2Fmac.tail1.ts.net&token=abc';
 test/remoteAccess.test.js:123:    expect(link.protocol).toBe('devorbit:');
 utils/remoteClient.test.ts:33:    const link = `devorbit://pair?url=${encodeURIComponent(PAIRING.url)}&token=secret`;
@@ -231,7 +269,7 @@ utils/remoteClient.ts:49:    if (url.protocol !== 'devorbit:' || url.host !== 'o
 ```
 components/PairingScreen.tsx:21:        headers: { 'X-DevOrbit-Token': token.trim() },
 server/services/remoteAccess.js:7: * `X-DevOrbit-Token` header or `token` query param (EventSource/WebSocket cannot set headers).
-server/services/remoteAccess.js:79:  const header = req.headers['x-devorbit-token'];
+server/services/remoteAccess.js:89:  const header = req.headers['x-devorbit-token'];
 test/remoteAccess.test.js:71:    const res = await get('/api/ping', { ...REMOTE, 'X-DevOrbit-Token': 'wrong' });
 test/remoteAccess.test.js:77:    expect((await get('/api/ping', { ...REMOTE, 'X-DevOrbit-Token': token })).status).toBe(200);
 utils/remoteClient.test.ts:98:    expect(new Headers(calls[0][1]?.headers).get('X-DevOrbit-Token')).toBe('secret');
@@ -242,9 +280,9 @@ utils/remoteClient.ts:126:    headers.set('X-DevOrbit-Token', pairing.token);
 
 ```
 README.md:232:- All communication goes through the internal Docker network `devorbit-network`
-components/AgentsView/AgentList.tsx:56:export const RAIL_GROUP_MIME = 'application/x-devorbit-rail-group';
-components/CodingView/BrowserPreviewPanel.tsx:173:      if (event.data?.type === 'devorbit-console') {
-components/CodingView/BrowserPreviewPanel.tsx:189:      else if (event.data?.type === 'devorbit-network') {
+components/AgentsView/AgentList.tsx:57:export const RAIL_GROUP_MIME = 'application/x-devorbit-rail-group';
+components/CodingView/BrowserPreviewPanel.tsx:162:      if (event.data?.type === 'devorbit-console') {
+components/CodingView/BrowserPreviewPanel.tsx:178:      else if (event.data?.type === 'devorbit-network') {
 docker-compose.yml:15:      - devorbit-network
 docker-compose.yml:77:      - devorbit-network
 docker-compose.yml:99:      - devorbit-network
@@ -288,7 +326,7 @@ utils/agentWorkspace.ts:2:export const AGENT_TAB_MIME = 'application/x-devorbit-
 ```
 .github/workflows/release.yml:94:          images: ghcr.io/hpmartini/devhub-${{ matrix.image }}
 IMPLEMENTATION_PLAN.md:292:docker compose logs -f devorbit
-README.md:138:Every [release](https://github.com/hpmartini/Orkumo/releases) ships the desktop installers (`.dmg`, `.AppImage`, `.deb`, `.rpm`, see [DESKTOP.md](DESKTOP.md)) and multi-arch images (`ghcr.io/hpmartini/devhub-api`, `devhub-frontend`, amd64 + arm64).
+README.md:138:Every [release](https://github.com/hpmartini/Orkumo/releases) ships the desktop installers (`.dmg`, `.AppImage`, `.deb`, `.rpm`, see [DESKTOP.md](DESKTOP.md)) and multi-arch images (`ghc …
 README.md:393:cloudflared tunnel create devorbit-code
 README.md:394:cloudflared tunnel route dns devorbit-code code.yourdomain.com
 README.md:406:cloudflared tunnel run devorbit-code
@@ -317,17 +355,18 @@ docs/CODE_SERVER_IMPLEMENTATION.md:429:   docker stats devorbit-code-server
 docs/CODE_SERVER_IMPLEMENTATION.md:496:   docker exec devorbit-code-server curl -I https://marketplace.visualstudio.com
 scripts/docker-release-smoke.sh:8:docker build -q -f "$WT/Dockerfile.api" -t "ghcr.io/hpmartini/devhub-api:$V" "$WT" || exit 1
 scripts/docker-release-smoke.sh:9:docker build -q -f "$WT/Dockerfile.frontend" -t "ghcr.io/hpmartini/devhub-frontend:$V" "$WT" || exit 1
+scripts/review/190.sh:11:DATA_DIR="$(mktemp -d "${TMPDIR:-/tmp}/devorbit-190-XXXX")"
 server/db/index.js:17:  const database = process.env.DB_NAME || 'devorbit';
 ```
 
 ## Interne Port-/CLI-Namen (PORTS.devhub, --devorbit-server-port)
 
 ```
-TASK.md:468:  - Solution: `PORTS.devhub`/`PORTS.server` in `config/defaults.{js,ts}` auf 3098/3099 (wie Docker); `vite.config.ts` nutzt `PORTS` statt eigener Literale. `appStart` (Startport verwalteter Apps) bleibt 3001.
+TASK.md:468:  - Solution: `PORTS.devhub`/`PORTS.server` in `config/defaults.{js,ts}` auf 3098/3099 (wie Docker); `vite.config.ts` nutzt `PORTS` statt eigener Literale. `appStart` (Startport verwaltete …
 config/defaults.js:16:  devhub: 3098,
 config/defaults.ts:13:  devhub: 3098,
-electron/main.js:44:const VITE_PORT = parseInt(process.env.VITE_PORT || String(PORTS.devhub), 10);
-electron/main.js:69:      additionalArguments: [`--devorbit-server-port=${SERVER_PORT}`],
+electron/main.js:45:const VITE_PORT = parseInt(process.env.VITE_PORT || String(PORTS.devhub), 10);
+electron/main.js:70:      additionalArguments: [`--devorbit-server-port=${SERVER_PORT}`],
 electron/preload.js:13:const serverPortArg = process.argv.find((arg) => arg.startsWith('--devorbit-server-port='));
 scripts/wait-for-vite.js:20:const port = parseInt(process.env.VITE_PORT || String(PORTS.devhub), 10);
 vite.config.ts:11:  const VITE_PORT = parseInt(env.VITE_PORT || String(PORTS.devhub), 10);

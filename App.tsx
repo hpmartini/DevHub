@@ -12,7 +12,7 @@ import { isElectron, isNativeApp } from './utils/apiConfig';
 import { Bot, Rocket } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import {
-  SystemHealth,
+  ToolVersions,
   ErrorBoundary,
   AdminPanel,
   TitleBar,
@@ -21,9 +21,11 @@ import {
   AgentsView,
 } from './components';
 import { ModuleSlot } from './components/ModuleSlot';
+import { ModuleMode } from './components/ModuleMount';
+import { modeCommands, useModulesState, type ModeEntry } from './hooks/useModules';
 import { useApps } from './hooks';
 import { AgentOverview } from './components/AgentOverview';
-import { UsageView, UsageCard } from './components/UsageView';
+import { UsageView, UsageCard, SessionsCard } from './components/UsageView';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useProjectContexts, ROUTE_KEY } from './hooks/useProjectContexts';
 import { CommandPaletteProvider, useRegisterCommands } from './components/CommandPalette';
@@ -33,23 +35,30 @@ import { fetchConfig } from './services/api';
 import { KeyboardShortcuts } from './types';
 
 import { BoardView } from './components/BoardView';
-import { WorkflowView } from './components/WorkflowView';
 import { ConnectedPullRequestsPage } from './components/AgentsView/PullRequestsPage';
 import { CodeView } from './components/CodeView';
 import { ShellBrowser } from './components/ShellBrowser';
 import { installAnchorInterception, openLink, setLinkTarget } from './utils/links';
 
-type ActiveTab = 'dashboard' | 'usage' | 'agents' | 'board' | 'code' | 'workflows' | 'pulls';
+const HOST_TABS = ['dashboard', 'usage', 'agents', 'board', 'code', 'pulls'];
 
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const isDashboardRoute = location.pathname === '/dashboard';
-  const isUsageRoute = location.pathname === '/usage';
-  const isBoardRoute = location.pathname === '/board';
-  const isCodeRoute = location.pathname === '/code';
-  const isWorkflowsRoute = location.pathname === '/workflows';
-  const isPullsRoute = location.pathname === '/pulls';
+
+  // Modes of loaded modules (docs/MODULES.md) live at /<id> next to the host routes
+  const { modules, ready: modulesReady } = useModulesState();
+  const modes = useMemo<ModeEntry[]>(
+    () => modules.flatMap((m) => (m.ui && m.mode ? [{ id: m.id, ...m.mode }] : [])),
+    [modules]
+  );
+  const segment = location.pathname.slice(1);
+  const knownRoute = HOST_TABS.includes(segment) || modes.some((m) => m.id === segment);
+  // Unknown paths are redirected below once modules are known; until then show the agents view
+  const activeTab = knownRoute ? segment : 'agents';
+  // Robot = dashboard of the active context, rocket = global dashboard (#184)
+  const isContextDashboard =
+    activeTab === 'dashboard' && new URLSearchParams(location.search).get('scope') === 'context';
 
   const { apps, loading, settings, refreshApps } = useApps();
 
@@ -62,6 +71,11 @@ function AppContent() {
     const members = new Set(contextAppIds);
     return apps.filter((app) => members.has(app.id));
   }, [apps, contextAppIds]);
+  // A context without own project list spans everything, like its other views
+  const dashboardScope = useMemo(
+    () => (isContextDashboard && contextAppIds ? contextApps.map((a) => a.path) : undefined),
+    [isContextDashboard, contextAppIds, contextApps]
+  );
   // Configured project directories (admin panel): context dialog and tabs cluster by them
   const [projectDirs, setProjectDirs] = useState<string[]>([]);
   const loadProjectDirs = useCallback(() => {
@@ -73,31 +87,12 @@ function AppContent() {
   // Context id being edited in the dialog; 'new' creates one
   const [editingContext, setEditingContext] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('agents');
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
 
   const navigateRef = useRef(navigate);
   useEffect(() => {
     navigateRef.current = navigate;
   }, [navigate]);
-
-  useEffect(() => {
-    setActiveTab(
-      isDashboardRoute
-        ? 'dashboard'
-        : isUsageRoute
-          ? 'usage'
-          : isBoardRoute
-            ? 'board'
-            : isCodeRoute
-              ? 'code'
-              : isWorkflowsRoute
-                ? 'workflows'
-                : isPullsRoute
-                  ? 'pulls'
-                  : 'agents'
-    );
-  }, [isDashboardRoute, isUsageRoute, isBoardRoute, isCodeRoute, isWorkflowsRoute, isPullsRoute]);
 
   // Each context keeps its own route (#97): it is parked with the context's ui on a switch
   const route = location.pathname + location.search;
@@ -138,6 +133,10 @@ function AppContent() {
   }, []);
 
   const handleSelectDashboard = () => navigate('/dashboard');
+  const handleSelectContextDashboard = () => navigate('/dashboard?scope=context');
+  // Back from the usage details: previous view inside the app, else the dashboard
+  const handleBackFromUsage = () =>
+    location.key !== 'default' ? navigate(-1) : handleSelectDashboard();
   // Stable: AgentsView's attach callbacks depend on it
   const openAgentsView = useCallback(() => navigate('/agents'), [navigate]);
 
@@ -196,13 +195,7 @@ function AppContent() {
       'issues kanban github project'
     ),
     command('code', 'Open code mode', 'Navigate', () => navigate('/code'), 'ide vscode editor'),
-    command(
-      'workflows',
-      'Open workflows',
-      'Navigate',
-      () => navigate('/workflows'),
-      'mw martini pipeline orchestrate go stages'
-    ),
+    ...modeCommands(modes, navigate),
     command('settings', 'Open settings', 'Navigate', () => setAdminPanelOpen(true), 'admin'),
     ...contexts.contexts.map((c) =>
       command(`context.${c.id}`, `Switch to context: ${c.name}`, 'Context', () =>
@@ -224,7 +217,7 @@ function AppContent() {
   ];
   useRegisterCommands('app', paletteCommands);
 
-  if (loading || !contexts.ready) {
+  if (loading || !contexts.ready || !modulesReady) {
     return <LoadingSkeleton />;
   }
 
@@ -248,6 +241,9 @@ function AppContent() {
           },
         }}
       />
+
+      {/* Unknown path, e.g. a module mode whose module is not loaded (#165): overview */}
+      {!knownRoute && <Navigate to={segment ? '/dashboard' : '/agents'} replace />}
 
       {/* TitleBar - custom titlebar with tabs and pane controls */}
       <TitleBar
@@ -298,22 +294,49 @@ function AppContent() {
                 onOpenView={openAgentsView}
                 nav={{
                   onOpenDashboard: handleSelectDashboard,
-                  onOpenWorkflows: () => navigate('/workflows'),
+                  onOpenContextDashboard: handleSelectContextDashboard,
+                  modes,
                   onOpenSettings: () => setAdminPanelOpen(true),
                   onOpenProject: handleSelectApp,
                 }}
               >
-                {/* Dashboard: the start view behind the rocket and the agents icon */}
+                {/* Dashboard: global behind the rocket, the active context's behind the robot */}
                 <div
                   className={
                     activeTab === 'dashboard' ? 'absolute inset-0 overflow-auto' : 'hidden'
                   }
                 >
                   <div className="p-4 md:p-8 max-w-7xl mx-auto pb-20 space-y-8 animate-in fade-in duration-500">
-                    <AgentOverview active={activeTab === 'dashboard'} />
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                      {isContextDashboard ? (
+                        <>
+                          <Bot size={18} className="text-blue-400" />
+                          {contexts.active?.name ?? 'Context'}
+                          <span className="text-sm font-normal text-gray-400">
+                            {dashboardScope ? `${dashboardScope.length} projects` : 'all projects'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Rocket size={18} className="text-blue-400" />
+                          Dashboard
+                          <span className="text-sm font-normal text-gray-400">all contexts</span>
+                        </>
+                      )}
+                    </h2>
+                    <AgentOverview
+                      active={activeTab === 'dashboard'}
+                      projectPaths={dashboardScope}
+                    />
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      <UsageCard onOpen={() => navigate('/usage')} />
-                      <SystemHealth />
+                      <SessionsCard
+                        active={activeTab === 'dashboard'}
+                        projectPaths={dashboardScope}
+                      />
+                      <div className="space-y-8">
+                        <UsageCard onOpen={() => navigate('/usage')} />
+                        <ToolVersions apps={isContextDashboard ? contextApps : undefined} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -325,7 +348,7 @@ function AppContent() {
                   }
                   aria-hidden={activeTab !== 'usage'}
                 >
-                  <UsageView active={activeTab === 'usage'} />
+                  <UsageView active={activeTab === 'usage'} onBack={handleBackFromUsage} />
                 </div>
 
                 {/* Agent task board - kept mounted like the agents view, polls only while active */}
@@ -352,17 +375,18 @@ function AppContent() {
                   <CodeView active={activeTab === 'code'} apps={contextApps} />
                 </div>
 
-                {/* Workflows (mw) - polls only while active */}
-                <div
-                  className={
-                    activeTab === 'workflows'
-                      ? 'absolute inset-0 z-10 flex flex-col min-h-0'
-                      : 'hidden'
-                  }
-                  aria-hidden={activeTab !== 'workflows'}
-                >
-                  <WorkflowView active={activeTab === 'workflows'} />
-                </div>
+                {/* Module modes - kept mounted, told whether they are visible */}
+                {modes.map((m) => (
+                  <div
+                    key={m.id}
+                    className={
+                      activeTab === m.id ? 'absolute inset-0 z-10 flex flex-col min-h-0' : 'hidden'
+                    }
+                    aria-hidden={activeTab !== m.id}
+                  >
+                    <ModuleMode id={m.id} active={activeTab === m.id} />
+                  </div>
+                ))}
 
                 {/* Open pull requests (#157); the PR data comes from AgentsView via context */}
                 {activeTab === 'pulls' && (
@@ -409,7 +433,7 @@ function AppContent() {
         }}
       />
 
-      <ModuleSlot />
+      <ModuleSlot modules={modules} />
     </div>
   );
 }
@@ -418,14 +442,8 @@ function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/agents" replace />} />
-      <Route path="/dashboard" element={<AppContent />} />
-      <Route path="/usage" element={<AppContent />} />
-      <Route path="/agents" element={<AppContent />} />
-      <Route path="/board" element={<AppContent />} />
-      <Route path="/code" element={<AppContent />} />
-      <Route path="/workflows" element={<AppContent />} />
-      <Route path="/pulls" element={<AppContent />} />
-      <Route path="*" element={<Navigate to="/agents" replace />} />
+      {/* AppContent resolves the path: host modes, module modes, else /agents */}
+      <Route path="*" element={<AppContent />} />
     </Routes>
   );
 }

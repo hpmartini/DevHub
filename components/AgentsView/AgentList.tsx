@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { clampMenuPosition } from '../../utils/menuPosition';
 import {
   ArrowDown,
   ArrowUp,
@@ -13,7 +14,6 @@ import {
   SquareTerminal,
   Star,
   Timer,
-  Workflow,
 } from 'lucide-react';
 import type {
   AgentSession,
@@ -45,6 +45,7 @@ import {
 import { FAVORITES_GROUP_KEY, groupNeighbour } from '../../hooks/useRailPreferences';
 import type { AgentConfigLike } from './types';
 import { RailNavProps } from './ProjectsRail';
+import { moduleIcon } from '../moduleIcon';
 import { IssuePill, PrPill, ServerLinks, SubagentsBadge } from './SessionLinks';
 import { CacheBadge } from './CacheBadge';
 import { cacheCountdown, isCacheWarning } from '../../utils/agentCache';
@@ -193,7 +194,7 @@ export const AgentList: React.FC<AgentListProps> = ({
   onFocusOpen,
   now,
   grouping,
-  cardDetails = 'hover',
+  cardDetails = 'click',
   cardDensity = 'comfortable',
   cardFields = DEFAULT_AGENT_CARD_FIELDS,
   lookup,
@@ -241,6 +242,23 @@ export const AgentList: React.FC<AgentListProps> = ({
       hoverTimer.current = setTimeout(() => setHoveredId(id), HOVER_DETAILS_DELAY_MS);
   };
   useEffect(() => () => clearTimeout(hoverTimer.current), []);
+  // Card selected by a click (#181): in hover mode a click must not open details, a keyboard selection may
+  const [clickedId, setClickedId] = useState<string | null>(null);
+  const selectedItem = items[selectedIndex];
+  const selectedId = selectedItem?.type === 'session' ? selectedItem.session.id : null;
+  useEffect(() => {
+    if (selectedId === clickedId) return;
+    // Keyboard moved the selection: forget the click and the hovered card so only the selection opens
+    setClickedId(null);
+    clearTimeout(hoverTimer.current);
+    setHoveredId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only a selection change counts
+  }, [selectedId]);
+  // Touch screens have no hover: there hover mode behaves like click mode
+  const detailsMode =
+    cardDetails === 'hover' && !window.matchMedia?.('(hover: hover)').matches
+      ? 'click'
+      : cardDetails;
   const comfortable = cardDensity === 'comfortable';
   // One width for the whole list so names stay aligned; wide only when some card fills the column
   const leftElements = CARD_ELEMENTS.filter(({ key }) => cardFields[key] === 'left').map(
@@ -337,6 +355,23 @@ export const AgentList: React.FC<AgentListProps> = ({
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', onKey);
     };
+  }, [menu]);
+
+  // Place the menu from its measured size before paint, so it never overflows the window (#192)
+  useLayoutEffect(() => {
+    const el = menuRef.current;
+    if (!menu || !el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const { left, top } = clampMenuPosition(
+      menu.x,
+      menu.y,
+      width,
+      height,
+      window.innerWidth,
+      window.innerHeight
+    );
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
   }, [menu]);
 
   // Keyboard-opened menu takes focus; closing hands it back to the rail
@@ -844,11 +879,17 @@ export const AgentList: React.FC<AgentListProps> = ({
                   const row3 = comfortable ? slot.row3 : [];
                   const hasDetails = slot.details.length > 0;
                   const pinned = hasDetails && !!expandedSessionIds?.has(session.id);
-                  const expanded = cardDetailsVisible(cardDetails, {
+                  const expanded = cardDetailsVisible(detailsMode, {
                     hasDetails,
                     pinned,
                     hovered: hoveredId === session.id,
-                    focused: selected && railFocused,
+                    anyHovered: hoveredId !== null,
+                    selectedBy:
+                      selected && railFocused
+                        ? clickedId === session.id
+                          ? 'click'
+                          : 'keyboard'
+                        : null,
                   });
                   // Transient details float over the cards below instead of pushing them down
                   const overlay = expanded && !pinned && cardDetails !== 'always';
@@ -861,6 +902,7 @@ export const AgentList: React.FC<AgentListProps> = ({
                       aria-selected={selected}
                       aria-current={isActive || undefined}
                       onClick={() => {
+                        setClickedId(session.id);
                         onSelectIndex(index);
                         if (isOpen) onFocusOpen?.(session.id);
                       }}
@@ -977,11 +1019,17 @@ export const AgentList: React.FC<AgentListProps> = ({
                             icon={<Kanban size={12} />}
                             className="p-1.5"
                           />
-                          <ActionButton
-                            action={actions.find((a) => a.id === 'workflow')}
-                            icon={<Workflow size={12} />}
-                            className="p-1.5"
-                          />
+                          {nav?.modes?.map((m) => {
+                            const Icon = moduleIcon(m.icon);
+                            return (
+                              <ActionButton
+                                key={m.id}
+                                action={actions.find((a) => a.id === `mode:${m.id}`)}
+                                icon={<Icon size={12} />}
+                                className="p-1.5"
+                              />
+                            );
+                          })}
                         </div>
                         {onToggleFavoriteSession && (
                           <FavoriteButton
@@ -1004,14 +1052,11 @@ export const AgentList: React.FC<AgentListProps> = ({
 
       {menu && menuActions.length > 0 && (
         <div
-          className="fixed z-50 w-max min-w-[10rem] max-w-[14rem] bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 text-sm"
+          className="fixed z-50 w-max min-w-[10rem] max-w-[14rem] max-h-[calc(100vh-16px)] overflow-y-auto thin-scrollbar bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 text-sm"
           role="menu"
           ref={menuRef}
           onKeyDown={onMenuKeyDown}
-          style={{
-            left: Math.min(menu.x, window.innerWidth - 232),
-            top: Math.min(menu.y, window.innerHeight - 320),
-          }}
+          style={{ left: menu.x, top: menu.y }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {menuActions.map((action) => (
