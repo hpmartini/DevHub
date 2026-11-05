@@ -178,6 +178,24 @@ export const AgentSettingsPanel: React.FC<AgentSettingsPanelProps> = ({
                   <option value="compact">Compact</option>
                 </select>
               </div>
+              <div>
+                <label className={label} htmlFor="agent-chat-submit-key">
+                  Chat: send message with
+                </label>
+                <select
+                  id="agent-chat-submit-key"
+                  className={field}
+                  value={settings.chatSubmitKey}
+                  onChange={(e) =>
+                    onUpdate({
+                      chatSubmitKey: e.target.value as AgentViewSettings['chatSubmitKey'],
+                    })
+                  }
+                >
+                  <option value="mod+enter">Cmd/Ctrl+Enter (Enter = new line)</option>
+                  <option value="enter">Enter (Shift+Enter = new line)</option>
+                </select>
+              </div>
             </div>
             <fieldset className="space-y-2">
               <legend className={`${label} flex items-center gap-2 w-full`}>

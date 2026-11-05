@@ -172,7 +172,7 @@ describe('chatEvents - reduceChat (AC-2)', () => {
     expect(s.messages[0]).toMatchObject({
       kind: 'notice',
       tone: 'error',
-      text: 'Session beendet (Code 1): boom',
+      text: 'Session ended (code 1): boom',
     });
   });
 

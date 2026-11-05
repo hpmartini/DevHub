@@ -202,6 +202,9 @@ export function startChat(opts, context = {}) {
     orphanTimer: null,
     stderr: '',
   };
+  s.exited = new Promise((resolve) => {
+    s.markExited = resolve;
+  });
   sessions.set(s.id, s);
 
   let buffer = '';
@@ -223,6 +226,7 @@ export function startChat(opts, context = {}) {
     if (!s.running) return;
     s.running = false;
     s.busy = false;
+    s.markExited();
     clearTimeout(s.orphanTimer);
     record(s, {
       type: 'devorbit_exit',
@@ -335,6 +339,14 @@ export function stopChat(id) {
   }
   clearTimeout(s.orphanTimer);
   chatEvents.emit('change', listChats());
+  return true;
+}
+
+/** stopChat, resolved once the process is gone, so a terminal can resume the same session */
+export async function stopChatAndWait(id, timeoutMs = 4000) {
+  const s = sessions.get(id);
+  if (!stopChat(id)) return false;
+  await Promise.race([s.exited, new Promise((r) => setTimeout(r, timeoutMs).unref?.())]);
   return true;
 }
 

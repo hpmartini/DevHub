@@ -303,8 +303,8 @@ export function reduceChat(state: ChatState, event: unknown): ChatState {
       const stderr = str(event.stderr);
       const ended = { ...state, busy: false, ended: true };
       return code && code !== 0
-        ? notice(ended, `Session beendet (Code ${code})${stderr ? `: ${stderr}` : ''}`, 'error')
-        : notice(ended, 'Session beendet', 'info');
+        ? notice(ended, `Session ended (code ${code})${stderr ? `: ${stderr}` : ''}`, 'error')
+        : notice(ended, 'Session ended', 'info');
     }
 
     default:

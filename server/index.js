@@ -1346,8 +1346,8 @@ app.post(
   chatAction((req) => chatService.interruptChat(req.params.chatId))
 );
 
-app.delete('/api/agents/chat/:chatId', validateParams(chatIdSchema), (req, res) => {
-  res.json({ stopped: chatService.stopChat(req.params.chatId) });
+app.delete('/api/agents/chat/:chatId', validateParams(chatIdSchema), async (req, res) => {
+  res.json({ stopped: await chatService.stopChatAndWait(req.params.chatId) });
 });
 
 /**
