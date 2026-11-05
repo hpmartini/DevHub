@@ -1,25 +1,33 @@
 import React from 'react';
-import { MessagesSquare, Workflow, Kanban, Code2 } from 'lucide-react';
+import { MessagesSquare, Kanban, Code2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { ModeEntry } from '../hooks/useModules';
+import { moduleIcon } from './moduleIcon';
 
+/** Host modes; modes of loaded modules (e.g. Workflows, #165) sit between Agents and Board */
 export const MODES = [
   { path: '/agents', label: 'Agents', icon: MessagesSquare },
-  { path: '/workflows', label: 'Workflows', icon: Workflow },
   { path: '/board', label: 'Board', icon: Kanban },
   { path: '/code', label: 'Code', icon: Code2 },
 ] as const;
 
 /** Work modes of the active context (#184): the route is the state, one click switches */
-export const ModeSwitcher: React.FC = () => {
+export const ModeSwitcher: React.FC<{ modes?: ModeEntry[] }> = ({ modes = [] }) => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const [agents, ...host] = MODES;
+  const all = [
+    agents,
+    ...modes.map((m) => ({ path: `/${m.id}`, label: m.label, icon: moduleIcon(m.icon) })),
+    ...host,
+  ];
   return (
     <div
       role="group"
       aria-label="Mode"
       className="flex items-center rounded border border-gray-700 bg-gray-950 p-0.5 shrink-0"
     >
-      {MODES.map(({ path, label, icon: Icon }) => {
+      {all.map(({ path, label, icon: Icon }) => {
         const active = pathname === path;
         return (
           <button

@@ -489,7 +489,7 @@ export const DEFAULT_AGENT_VIEW_SETTINGS: AgentViewSettings = {
   collapsedGroups: [],
   notifications: true,
   desktopNotifications: false,
-  cardDetails: 'hover',
+  cardDetails: 'click',
   cardDensity: 'comfortable',
   cardFields: DEFAULT_AGENT_CARD_FIELDS,
   disabled: false,
@@ -505,13 +505,6 @@ export interface BoardSource {
   owner: string;
   /** Project number, e.g. 4 for users/hpmartini/projects/4 (MACC) */
   number: number;
-}
-
-// Workflows (#87, mw 7 #136): card details; the stage rule lives in utils/workflowStage.js
-export interface WorkflowDetails {
-  docs: { name: string; path: string }[];
-  /** image URLs from issue and PR comments (review screenshots) */
-  screenshots: string[];
 }
 
 export interface BoardStatusOption {

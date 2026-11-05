@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DevOrbit Dashboard is a React-based workspace for agentic development. It scans the directories configured in the admin panel as a project registry (projects open in Code mode, `/code?path=`); it no longer starts, stops or analyzes apps (issue #143).
 
-Mode bar (#184, `components/ModeSwitcher.tsx`) in the AgentsView header next to the robot: Agents · Workflows · Board · Code; the route is the state. The robot opens the context dashboard (`/dashboard?scope=context`), the rocket in the title bar the global one (`/dashboard`).
+Mode bar (#184, `components/ModeSwitcher.tsx`) in the AgentsView header next to the robot: Agents · modes of loaded modules (e.g. Workflows, #165) · Board · Code; the route is the state. The robot opens the context dashboard (`/dashboard?scope=context`), the rocket in the title bar the global one (`/dashboard`).
 
 The dashboard (`/dashboard`, context variant filtered to the active context's project paths via `utils/projectScope.ts`) shows:
 

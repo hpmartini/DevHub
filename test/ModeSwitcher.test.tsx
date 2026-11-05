@@ -11,10 +11,10 @@ const Location = () => {
   return <div data-testid="location">{pathname + search}</div>;
 };
 
-const renderAt = (route: string) =>
+const renderAt = (route: string, modes = [{ id: 'workflows', label: 'Workflows' }]) =>
   render(
     <MemoryRouter initialEntries={[route]}>
-      <ModeSwitcher />
+      <ModeSwitcher modes={modes} />
       <Location />
     </MemoryRouter>
   );
@@ -25,7 +25,7 @@ const pressed = () =>
   LABELS.filter((label) => button(label).getAttribute('aria-pressed') === 'true');
 
 describe('ModeSwitcher (#184)', () => {
-  it('offers the four modes in order: Agents, Workflows, Board, Code', () => {
+  it('offers the modes in order: Agents, module modes (Workflows), Board, Code', () => {
     renderAt('/agents');
     expect(screen.getAllByRole('button').map((b) => b.getAttribute('title'))).toEqual([
       'Agents',
@@ -33,6 +33,23 @@ describe('ModeSwitcher (#184)', () => {
       'Board',
       'Code',
     ]);
+  });
+
+  it('without the workflows module there is no Workflows mode (#165)', () => {
+    renderAt('/agents', []);
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('title'))).toEqual([
+      'Agents',
+      'Board',
+      'Code',
+    ]);
+  });
+
+  it('a module mode switches to its route', async () => {
+    renderAt('/agents');
+    await userEvent.click(button('Workflows'));
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/workflows$/);
+    expect(pressed()).toEqual([]);
+    expect(button('Workflows')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it.each(MODES.map((m) => [m.label, m.path]))('%s switches to %s', async (label, path) => {
