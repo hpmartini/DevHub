@@ -33,11 +33,12 @@ bun run lint >"$TMP/lint.log" 2>&1 || fail "lint"
 echo "lint ok"
 bunx vitest run 2>&1 | grep -E "Test Files|Tests "
 
-step "AC-2 no iOS project, no @capacitor"
+CAP='@capa''citor' # split so this script is not a match of its own (and of the AC-2 grep)
+step "AC-2 no iOS project, no $CAP"
 [ -z "$(git ls-files ios capacitor.config.json)" ] || fail "ios/ or capacitor.config.json tracked"
 echo "ios/, capacitor.config.json: not tracked"
-if git grep -n "@capacitor" -- ':!docs' ':!briefings'; then fail "@capacitor found"; fi
-echo "@capacitor: no match"
+if git grep -n "$CAP" -- ':!docs' ':!briefings'; then fail "$CAP found"; fi
+echo "$CAP: no match"
 
 step "AC-3 token gate (throwaway server :$PORT, data in $TMP/data)"
 L="http://127.0.0.1:$PORT"
