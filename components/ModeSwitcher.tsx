@@ -33,7 +33,8 @@ export const ModeSwitcher: React.FC<{ modes?: ModeEntry[] }> = ({ modes = [] }) 
         return (
           <button
             key={path}
-            onClick={() => !active && navigate(path)}
+            // #191 AC-1: Pull Requests is an overlay mode, a second click returns to the agents
+            onClick={() => (active ? path === '/pulls' && navigate('/agents') : navigate(path))}
             aria-pressed={active}
             aria-label={label}
             title={label}

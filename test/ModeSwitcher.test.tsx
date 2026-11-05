@@ -36,13 +36,14 @@ describe('ModeSwitcher (#184)', () => {
     ]);
   });
 
-  it('Pull Requests opens /pulls, is marked there, a second click stays (#191, #184)', async () => {
+  it('Pull Requests opens /pulls and is marked there, a second click returns to /agents (#191 AC-1)', async () => {
     renderAt('/board');
     await userEvent.click(button('Pull Requests'));
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/pulls$/);
     expect(pressed()).toEqual(['Pull Requests']);
     await userEvent.click(button('Pull Requests'));
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/pulls$/);
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/agents$/);
+    expect(pressed()).toEqual(['Agents']);
   });
 
   it('marks Pull Requests on a deep link with filters', () => {
