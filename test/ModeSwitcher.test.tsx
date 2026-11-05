@@ -25,14 +25,29 @@ const pressed = () =>
   LABELS.filter((label) => button(label).getAttribute('aria-pressed') === 'true');
 
 describe('ModeSwitcher (#184)', () => {
-  it('offers the modes in order: Agents, module modes (Workflows), Board, Code', () => {
+  it('offers the modes in order: Agents, module modes (Workflows), Board, Pull Requests, Code', () => {
     renderAt('/agents');
     expect(screen.getAllByRole('button').map((b) => b.getAttribute('title'))).toEqual([
       'Agents',
       'Workflows',
       'Board',
+      'Pull Requests',
       'Code',
     ]);
+  });
+
+  it('Pull Requests opens /pulls and is marked there, also with filters in the URL (#191)', async () => {
+    renderAt('/board');
+    await userEvent.click(button('Pull Requests'));
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/pulls$/);
+    expect(pressed()).toEqual(['Pull Requests']);
+    await userEvent.click(button('Pull Requests'));
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/pulls$/);
+  });
+
+  it('marks Pull Requests on a deep link with filters', () => {
+    renderAt('/pulls?repo=o%2Fr&ci=failure');
+    expect(pressed()).toEqual(['Pull Requests']);
   });
 
   it('without the workflows module there is no Workflows mode (#165)', () => {
@@ -40,6 +55,7 @@ describe('ModeSwitcher (#184)', () => {
     expect(screen.getAllByRole('button').map((b) => b.getAttribute('title'))).toEqual([
       'Agents',
       'Board',
+      'Pull Requests',
       'Code',
     ]);
   });
