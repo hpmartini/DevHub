@@ -1,3 +1,4 @@
+/* global document -- runs inside the page via waitForFunction */
 // #181 e2e against the running app and the real agent list (writes settings: use a throwaway data dir).
 // Usage: NODE_PATH=<dir with playwright> node scripts/review/181-e2e.cjs <baseUrl> <screenshotDir>
 const { chromium } = require('playwright');
@@ -16,7 +17,6 @@ const check = (name, got, want) => {
   await p.goto(`${base}/agents`, { waitUntil: 'load' });
   const cards = p.locator('[data-session-id][role=option]:visible');
   await cards.first().waitFor({ timeout: 90000 });
-  const ids = async () => cards.evaluateAll((els) => els.map((e) => e.dataset.sessionId));
   const open = async () =>
     cards.evaluateAll((els) =>
       els.filter((e) => e.querySelector('[data-card-details]')).map((e) => e.dataset.sessionId)
