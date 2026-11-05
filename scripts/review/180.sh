@@ -3,12 +3,12 @@
 # left), the remote-access token gate on a throwaway server, and builds the Pro app from a fresh clone
 # against this checkout up to xcodebuild for the simulator. Then serves the UI for a look;
 # Ctrl+C stops server and Vite and deletes the clone and the throwaway data dir.
-#   PRO_BRANCH (default feat/180-ios-app), SIM (default "iPhone 16"), REVIEW_SERVER_PORT (3297), REVIEW_VITE_PORT (3298)
+#   PRO_BRANCH (default main), SIM (default "iPhone 16"), REVIEW_SERVER_PORT (3297), REVIEW_VITE_PORT (3298)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 ROOT=$PWD
 
-PRO_BRANCH="${PRO_BRANCH:-feat/180-ios-app}"
+PRO_BRANCH="${PRO_BRANCH:-main}"
 SIM="${SIM:-iPhone 16}"
 PORT="${REVIEW_SERVER_PORT:-3297}"
 VITE_PORT="${REVIEW_VITE_PORT:-3298}"
@@ -20,7 +20,7 @@ cleanup() {
   rm -rf "$TMP"
 }
 trap cleanup EXIT
-trap 'exit 0' INT TERM # Ctrl+C is the normal end of the review, not a failure
+trap 'exit 130' INT TERM # aborted before the checks finished
 
 step() { printf '\n== %s\n' "$*"; }
 
@@ -79,4 +79,5 @@ Simulator-E2E (braucht tailscale serve vor :$PORT und eine laufende Agent-Sessio
   cd <DevHub-pro-Checkout>/apps/ios && bun run sync && scripts/ios-e2e.sh "$SIM" https://<mac>.<tailnet>.ts.net:8443 http://127.0.0.1:$PORT /tmp/ios-e2e <agent-id>
 Beenden: Ctrl+C
 MSG
+trap 'exit 0' INT TERM # Ctrl+C here is the normal end of the review
 wait
