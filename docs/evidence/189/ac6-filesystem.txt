@@ -1,0 +1,4 @@
+# AC-6 filesystem check Thu Nov  5 10:44:26 CET 2026
+$ cat allowed.txt
+yes$ ls denied.txt
+ls: denied.txt: No such file or directory
