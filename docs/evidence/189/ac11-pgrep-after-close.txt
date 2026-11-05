@@ -1,0 +1,4 @@
+Thu Nov  5 09:57:59 CET 2026
+after clicking 'End chat and close' (DELETE /api/agents/chat/502cc1c9-…)
+no chat process
+{"chats":[]}
