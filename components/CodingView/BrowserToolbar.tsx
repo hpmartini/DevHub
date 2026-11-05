@@ -9,6 +9,8 @@ import {
   Wrench,
   X,
   GripVertical,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { openInSystemBrowser } from '../../utils/links';
@@ -42,6 +44,9 @@ interface BrowserToolbarProps extends BrowserChromeProps {
   onViewportChange: (viewport: Viewport) => void;
   devToolsOpen: boolean;
   onToggleDevTools: () => void;
+  /** Back/forward state of the native view; the iframe variant has no history */
+  history?: { canGoBack: boolean; canGoForward: boolean };
+  onGo?: (direction: 'back' | 'forward') => void;
 }
 
 const iconButton = 'p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-700 shrink-0';
@@ -61,7 +66,10 @@ export function BrowserToolbar({
   closeLabel = 'Hide browser preview',
   actions,
   dragHandleProps,
+  history,
+  onGo,
 }: BrowserToolbarProps) {
+  const historyButton = `${iconButton} disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400`;
   return (
     <div className="bg-gray-850 border-b border-gray-700 shrink-0">
       <div role="toolbar" aria-label="Browser" className="flex items-center gap-1 h-9 px-1.5">
@@ -74,6 +82,28 @@ export function BrowserToolbar({
           >
             <GripVertical size={14} />
           </span>
+        )}
+        {onGo && (
+          <>
+            <button
+              onClick={() => onGo('back')}
+              disabled={!history?.canGoBack}
+              className={historyButton}
+              title="Back"
+              aria-label="Back"
+            >
+              <ArrowLeft size={14} />
+            </button>
+            <button
+              onClick={() => onGo('forward')}
+              disabled={!history?.canGoForward}
+              className={historyButton}
+              title="Forward"
+              aria-label="Forward"
+            >
+              <ArrowRight size={14} />
+            </button>
+          </>
         )}
         <button onClick={onSubmit} className={iconButton} title="Refresh" aria-label="Refresh">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />

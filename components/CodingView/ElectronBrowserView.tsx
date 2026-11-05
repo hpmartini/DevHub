@@ -31,6 +31,7 @@ export const ElectronBrowserView = ({ url, appId, ...chrome }: ElectronBrowserVi
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [devToolsOpen, setDevToolsOpen] = useState(false);
+  const [history, setHistory] = useState({ canGoBack: false, canGoForward: false });
 
   const api = window.electronAPI?.browserView;
 
@@ -167,6 +168,22 @@ export const ElectronBrowserView = ({ url, appId, ...chrome }: ElectronBrowserVi
     setCurrentUrl(url);
   }, [api, url]);
 
+  // Navigations inside the view (links, back/forward) update the url field and history buttons
+  useEffect(
+    () =>
+      api?.onNavigate?.(({ viewId, url: navUrl, canGoBack, canGoForward }) => {
+        if (viewId !== viewIdRef.current) return;
+        setCurrentUrl(navUrl);
+        setUrlError(null);
+        setHistory({ canGoBack, canGoForward });
+      }),
+    [api]
+  );
+
+  const go = (direction: 'back' | 'forward') => {
+    api?.go(viewIdRef.current, direction).catch(console.error);
+  };
+
   const handleRefresh = async () => {
     if (!api) return;
 
@@ -250,6 +267,8 @@ export const ElectronBrowserView = ({ url, appId, ...chrome }: ElectronBrowserVi
         onViewportChange={setViewport}
         devToolsOpen={devToolsOpen}
         onToggleDevTools={devToolsOpen ? handleCloseDevTools : handleOpenDevTools}
+        history={history}
+        onGo={go}
       />
 
       {/* BrowserView Container */}
