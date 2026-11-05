@@ -17,6 +17,7 @@ let dir;
 let server;
 let base;
 const platform = process.platform;
+const isMac = platform === 'darwin';
 
 beforeAll(async () => {
   dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'fileopen-')));
@@ -32,9 +33,11 @@ beforeAll(async () => {
   fs.writeFileSync(path.join(dir, 'page.html'), '<script></script>');
   // Finder alias (bookmark) named like a PDF; `open` would follow it to its target
   fs.writeFileSync(path.join(dir, 'alias.pdf'), Buffer.from('book\0\0\0\0mark\0\0\0\0', 'latin1'));
-  // classic alias: plain data fork, target in the resource fork
-  fs.writeFileSync(path.join(dir, 'classic.pdf'), '%PDF');
-  fs.writeFileSync(path.join(dir, 'classic.pdf', '..namedfork', 'rsrc'), 'alis');
+  // classic alias: plain data fork, target in the resource fork (only macOS has ..namedfork)
+  if (isMac) {
+    fs.writeFileSync(path.join(dir, 'classic.pdf'), '%PDF');
+    fs.writeFileSync(path.join(dir, 'classic.pdf', '..namedfork', 'rsrc'), 'alis');
+  }
   const app = express();
   // same order as server/index.js: token check before the route
   app.use(remoteAccess.requireRemoteToken);
@@ -47,7 +50,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  server.close();
+  server?.close();
   fs.rmSync(dir, { recursive: true, force: true });
   Object.defineProperty(process, 'platform', { value: platform });
 });
@@ -84,7 +87,7 @@ describe('POST /api/files/open', () => {
     'notes.py',
     'page.html',
     'alias.pdf',
-    'classic.pdf',
+    ...(isMac ? ['classic.pdf'] : []),
   ])('reveals launchable %s in Finder instead of opening it', async (name) => {
     const res = await post({ path: `./${name}`, cwd: dir });
     expect(res.status).toBe(200);
