@@ -267,6 +267,7 @@ describe('/pulls filters, clusters and sorting (#191)', () => {
     expect(titles()).toHaveLength(3);
     expect(screen.getByTestId('pulls-count')).toHaveTextContent(/^3$/);
     expect(screen.queryByRole('button', { name: /Reset filters/ })).toBeNull();
+    expect(screen.getByRole('searchbox', { name: 'Search pull requests' })).toHaveFocus();
   });
 
   it('AC-5: clustering shows a header with the count per group', () => {

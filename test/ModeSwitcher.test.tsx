@@ -36,7 +36,7 @@ describe('ModeSwitcher (#184)', () => {
     ]);
   });
 
-  it('Pull Requests opens /pulls and is marked there, also with filters in the URL (#191)', async () => {
+  it('Pull Requests opens /pulls, is marked there, a second click stays (#191, #184)', async () => {
     renderAt('/board');
     await userEvent.click(button('Pull Requests'));
     expect(screen.getByTestId('location')).toHaveTextContent(/^\/pulls$/);

@@ -88,6 +88,7 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = (props) => {
   const [openUrl, setOpenUrl] = useState<string | null>(null);
   const canEmbed = typeof window !== 'undefined' && !!window.electronAPI?.browserView;
   const viewRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [params, setParams] = useSearchParams();
   const query = useMemo(() => parsePullQuery(params), [params]);
   const { shown, groups } = useMemo(() => queryPulls(props.rows, query), [props.rows, query]);
@@ -135,7 +136,14 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = (props) => {
                 </span>
                 <div className="flex-1" />
                 {filtered && (
-                  <button onClick={() => update(FILTER_RESET)} className={ICON_BTN}>
+                  <button
+                    onClick={() => {
+                      update(FILTER_RESET);
+                      // the button unmounts once no filter is left; keep focus in the toolbar
+                      searchRef.current?.focus();
+                    }}
+                    className={ICON_BTN}
+                  >
                     <RotateCcw size={11} aria-hidden /> Reset filters
                   </button>
                 )}
@@ -146,6 +154,7 @@ export const PullRequestsPage: React.FC<PullRequestsPageProps> = (props) => {
                 className="flex flex-wrap items-center gap-1.5"
               >
                 <input
+                  ref={searchRef}
                   type="search"
                   aria-label="Search pull requests"
                   placeholder="Title, #number, branch, author"

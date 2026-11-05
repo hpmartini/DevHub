@@ -125,7 +125,7 @@ export const PullRequestList: React.FC<PullRequestListProps> = ({
         .filter((c): c is AgentContext => !!c?.repo?.slug && c.pulls === null)
         .map((c) => c.repo!.slug!)
     ),
-  ].filter((name) => !repoFilter || name === repoFilter);
+  ].filter((name) => !repoFilter || name.toLowerCase() === repoFilter.toLowerCase());
 
   const renderRow = (row: PullRequestRow, groupKey: string) => {
     const { pr, agents } = row;
