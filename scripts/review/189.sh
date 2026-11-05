@@ -29,7 +29,9 @@ trap cleanup EXIT INT TERM
 
 bunx vitest run test/chatService.test.js utils/chatEvents.test.ts
 
-DEVORBIT_DATA_PATH="$DATA_DIR" SERVER_PORT=$SERVER_PORT node server/index.js >"$TMP/server.log" 2>&1 &
+# No DB, migration or seed: chats live in memory and the Claude transcripts. DATABASE_URL points
+# nowhere so a local Postgres stays untouched (the server runs without a DB).
+DATABASE_URL=postgres://review@127.0.0.1:1/none DEVORBIT_DATA_PATH="$DATA_DIR" SERVER_PORT=$SERVER_PORT node server/index.js >"$TMP/server.log" 2>&1 &
 pids+=($!)
 VITE_PORT=$VITE_PORT SERVER_PORT=$SERVER_PORT bunx vite --port "$VITE_PORT" >"$TMP/vite.log" 2>&1 &
 pids+=($!)
