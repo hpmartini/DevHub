@@ -1,0 +1,26 @@
+agents --json --all
+daemon status
+agents --json --all
+daemon status
+agents --json --all
+agents --json --all
+agents --json --all
+agents --json --all
+attach fa4e0236
+agents --json --all
+agents --json --all
+agents --json --all
+stop fa4e0236
+-p --input-format stream-json --output-format stream-json --verbose --include-partial-messages --permission-prompt-tool stdio --resume b0b00236-0000-4000-8000-000000000002 --name MACC walz-landing#10
+agents --json --all
+agents --json --all
+--resume b0b00236-0000-4000-8000-000000000002
+agents --json --all
+agents --json --all
+daemon status
+agents --json --all
+daemon status
+agents --json --all
+agents --json --all
+agents --json --all
+agents --json --all
