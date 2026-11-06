@@ -1,0 +1,12 @@
+# AC-9 via the UI (/agents, 4 harness panes open in projects/demo)
+# processes below the server pid 24355, before closing:
+66384 24355 pi   (pi sets its own process title)
+66503 24355 /opt/homebrew/bin/omp -- Reply with OK only.
+78994 24355 /opt/homebrew/bin/opencode
+65743 24355 node /opt/homebrew/bin/codex -- Reply with OK only.
+65794 65743 .../@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex -- Reply with OK only.
+
+# after closing the 4 tabs (x on each tab):
+$ ps -p 66384,66503,78994,65743,65794 -o pid=,command=
+(no output, exit=1)
+# the 4 harness cards are gone from the list as well

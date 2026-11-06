@@ -1,0 +1,35 @@
+ Test Files  4 passed (4)
+      Tests  40 passed (40)
+PASS  AC-2 PUT dispatch.harness="bash" → 400
+PASS  AC-2 PUT dispatch.harness="Codex" → 400
+PASS  AC-2 PUT dispatch.harness="" → 400
+PASS  AC-2 PUT dispatch.harness=codex → 200
+PASS  AC-2 GET dispatch.harness = codex
+      GET /api/agents/harnesses [{"id":"omp","installed":true},{"id":"opencode","installed":true},{"id":"codex","installed":true},{"id":"pi","installed":true}]
+PASS  AC-3 unlisted binary (bash) → rejected (Invalid command)
+PASS  AC-3 unlisted flag (codex --config x) → rejected (Only a prompt after -- is allowed)
+PASS  AC-3 prompt without -- (pi "hi") → rejected (Only a prompt after -- is allowed)
+PASS  AC-3 opencode with a prompt → rejected (opencode takes no arguments)
+PASS  AC-3 cwd outside the project dirs (/tmp) → rejected (Working directory is outside the configured project directories: /tmp. Add it in the admin panel first.)
+PASS  AC-3 no process spawned by the rejections (0 descendants)
+PASS  AC-4 omp running: pid 97191 
+PASS  AC-4 omp cwd = $DATA/projects/demo
+PASS  AC-4 omp argv carries the prompt
+PASS  AC-9 omp after pane close: 0 process(es) left
+PASS  AC-4 opencode running: pid 97557 
+PASS  AC-4 opencode cwd = $DATA/projects/demo
+PASS  AC-9 opencode after pane close: 0 process(es) left
+PASS  AC-4 codex running: pid 97716 
+PASS  AC-4 codex cwd = $DATA/projects/demo
+PASS  AC-4 codex argv carries the prompt
+PASS  AC-9 codex after pane close: 0 process(es) left
+PASS  AC-4 pi running: pid 97831 
+PASS  AC-4 pi cwd = $DATA/projects/demo
+PASS  AC-4 pi argv carries the prompt
+PASS  AC-9 pi after pane close: 0 process(es) left
+all checks passed
+== AC-7: server that cannot see opencode (macOS sandbox denies reading the binary)
+PASS  AC-7 GET /api/agents/harnesses: opencode installed=false
+PASS  AC-7 start opencode → "opencode is not installed on this machine"
+== AC-2 restart: default harness survives
+PASS  AC-2 dispatch.harness after restart = codex
