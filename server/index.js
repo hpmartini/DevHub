@@ -2195,7 +2195,20 @@ const refuseUpgrade = (socket, status) => {
   socket.destroy();
 };
 
+// Browsers do not apply CORS to WebSockets: a foreign page could open a PTY on localhost. Same-origin
+// pages (the app served through `tailscale serve`) and the CORS origins pass.
+const isAllowedUpgradeOrigin = (req) => {
+  const origin = req.headers.origin;
+  if (!origin || isAllowedOrigin(origin)) return true;
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch {
+    return false;
+  }
+};
+
 server.on('upgrade', (req, socket, head) => {
+  if (!isAllowedUpgradeOrigin(req)) return refuseUpgrade(socket, '403 Forbidden');
   if (!remoteAccess.isAuthorized(req)) return refuseUpgrade(socket, '401 Unauthorized');
   const { pathname } = new URL(req.url, 'http://x');
   if (pathname === '/api/pty') {

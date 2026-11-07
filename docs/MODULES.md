@@ -64,11 +64,11 @@ Without the module there is no route, no toggle, no palette entry, no rail entry
 
 ### WebSocket upgrades
 
-The server has one `upgrade` dispatcher. It first applies the same check as HTTP requests (`remoteAccess.isAuthorized`: local request, pairing token or a module authorizer; otherwise `401`), then routes `/api/pty` to the host PTY server and `/api/modules/<id>/...` to that module's `onUpgrade` handler; anything else gets `404`. The handler owns the socket: it either completes the handshake (e.g. relays it raw to another server) or writes an HTTP error and destroys the socket. A throwing handler gets `500`.
+The server has one `upgrade` dispatcher. It refuses a browser `Origin` that is neither a CORS origin nor the page's own host (`403`; browsers apply no CORS to WebSockets), then applies the same check as HTTP requests (`remoteAccess.isAuthorized`: local request, pairing token or a module authorizer; otherwise `401`), then routes `/api/pty` to the host PTY server and `/api/modules/<id>/...` to that module's `onUpgrade` handler; anything else gets `404`. The handler owns the socket: it either completes the handshake (e.g. relays it raw to another server) or writes an HTTP error and destroys the socket. A throwing handler gets `500`.
 
 ### Authorizers
 
-An authorizer widens who may call the whole API, not only the module's routes, so it must be narrow and sync (it also runs for WebSocket upgrades). A throwing authorizer counts as a no. Example: the mesh module accepts a request that `tailscale serve` relayed for the machine owner's own tailnet login (`Tailscale-User-Login`, which serve overwrites on every request).
+An authorizer widens who may call the whole API, not only the module's routes, so it must be narrow and sync (it also runs for WebSocket upgrades). A throwing authorizer counts as a no. Example: the mesh module accepts a request that `tailscale serve` relayed for the machine owner's own tailnet login (`Tailscale-User-Login`, which serve overwrites on every request) from one of the owner's own devices (the last `X-Forwarded-For` hop, checked against `tailscale status`). Never trust an identity header alone: check it against a source the client cannot write.
 
 `ctx.services`:
 
