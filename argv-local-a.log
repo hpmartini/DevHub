@@ -1,0 +1,13 @@
+agents --json --all
+agents --json --all
+agents --json --all
+daemon status
+agents --json --all
+agents --json --all
+attach local-a1
+daemon status
+agents --json --all
+agents --json --all
+agents --json --all
+agents --json --all
+attach local-a1

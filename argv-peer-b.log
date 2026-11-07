@@ -1,0 +1,30 @@
+agents --json --all
+agents --json --all
+agents --json --all
+agents --json --all
+agents --json --all
+daemon status
+agents --json --all
+agents --json --all
+agents --json --all
+daemon status
+attach peer-b1
+agents --json --all
+logs peer-b2
+logs peer-b2
+agents --json --all
+--bg Remote-Auftrag 220
+agents --json --all
+daemon status
+agents --json --all
+stop peer-b2
+agents --json --all
+daemon status
+agents --json --all
+respawn peer-b2
+daemon status
+agents --json --all
+agents --json --all
+-p --input-format stream-json --output-format stream-json --verbose --include-partial-messages --permission-prompt-tool stdio
+agents --json --all
+agents --json --all
