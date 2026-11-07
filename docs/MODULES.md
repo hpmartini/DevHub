@@ -68,7 +68,7 @@ The server has one `upgrade` dispatcher. It refuses a browser `Origin` that is n
 
 ### Authorizers
 
-An authorizer widens who may call the whole API, not only the module's routes, so it must be narrow and sync (it also runs for WebSocket upgrades). A throwing authorizer counts as a no. Example: the mesh module accepts a request that `tailscale serve` relayed for the machine owner's own tailnet login (`Tailscale-User-Login`, which serve overwrites on every request) from one of the owner's own devices (the last `X-Forwarded-For` hop, checked against `tailscale status`). Never trust an identity header alone: check it against a source the client cannot write.
+An authorizer widens who may call the whole API, not only the module's routes, so it must be narrow and sync (it also runs for WebSocket upgrades). A throwing authorizer counts as a no. Example: the mesh module accepts a request that `tailscale serve` relayed for the machine owner's own tailnet login (`Tailscale-User-Login`, which serve overwrites on every request) from one of the owner's own devices (the last `X-Forwarded-For` hop, checked against `tailscale status`). Never trust an identity header alone: check it against a source the client cannot write. An identity header proves the device, not the page: also refuse cross-site browser requests (`Sec-Fetch-Site` other than `same-origin`/`none`, or an `Origin` without it), or any site open in the owner's browser can call the API (CSRF).
 
 `ctx.services`:
 
