@@ -945,7 +945,8 @@ export const AgentList: React.FC<AgentListProps> = ({
                       } ${
                         // Only a keyboard-moved selection needs a cursor, else arrow-key navigation is blind
                         selected && railFocused && clickedId !== session.id
-                          ? 'ring-1 ring-inset ring-cursor'
+                          ? // the open card's 2px outline covers the ring's outer 2px
+                            `ring-inset ring-cursor ${isActive ? 'ring-[3px]' : 'ring-1'}`
                           : isPeeking
                             ? 'ring-1 ring-inset ring-blue-300/50'
                             : cacheWarning

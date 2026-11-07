@@ -336,10 +336,13 @@ describe('AgentList card highlights (#210)', () => {
     railFocused = true,
     initial = -1,
     peekId = null,
+    cacheWarnId,
   }: {
     railFocused?: boolean;
     initial?: number;
     peekId?: string | null;
+    /** Card whose prompt cache expires within the warning window */
+    cacheWarnId?: string;
   }) {
     const [selected, setSelected] = React.useState(initial);
     return (
@@ -358,7 +361,14 @@ describe('AgentList card highlights (#210)', () => {
           now={2000}
           grouping="state"
           cardDetails="click"
-          contexts={Object.fromEntries(sessions.map((s) => [s.id, ctx]))}
+          contexts={Object.fromEntries(
+            sessions.map((s) => [
+              s.id,
+              s.id === cacheWarnId
+                ? ({ ...ctx, cache: { lastActivityAt: 2000, ttlMs: 5 * 60_000 } } as unknown as AgentContext)
+                : ctx,
+            ])
+          )}
           servers={new Map()}
           rowActions={() => []}
           groupActions={() => []}
@@ -396,6 +406,12 @@ describe('AgentList card highlights (#210)', () => {
     expect(highlights('c')).toEqual(['ring-1', 'ring-blue-300/50', 'ring-inset']);
   });
 
+  it('cache warning ring stays and differs from the attached level (AC-2)', () => {
+    render(<List cacheWarnId="c" />);
+    expect(highlights('c')).toEqual(['ring-1', 'ring-amber-400/70', 'ring-inset']);
+    expect(cardOf('c').className).toContain('bg-amber-400/5');
+  });
+
   it.each([true, false])(
     'clicked card that is neither open nor attached shows no highlight, rail focused %s (AC-3)',
     (railFocused) => {
@@ -411,6 +427,12 @@ describe('AgentList card highlights (#210)', () => {
     fireEvent.click(screen.getByText('arrow-down'));
     expect(cardOf('c').getAttribute('aria-selected')).toBe('true');
     expect(highlights('c')).toEqual(['ring-1', 'ring-cursor', 'ring-inset']);
+  });
+
+  it('keyboard cursor on the open card stays visible inside its 2px outline (AC-4)', () => {
+    render(<List initial={-1} />);
+    fireEvent.click(screen.getByText('arrow-down'));
+    expect(highlights('a')).toEqual([...STRONG, 'ring-[3px]', 'ring-cursor', 'ring-inset'].sort());
   });
 
   it('clicking an open or attached card keeps its level unchanged (AC-5)', () => {

@@ -56,6 +56,14 @@ const check = (name, ok, detail) => {
   check('AC-4 keyboard-moved selection shows a cursor ring', kb.selected === 'true' && !none(kb.shadow), kb.shadow);
   await rail.screenshot({ path: `${out}/rail-keyboard-cursor.png` });
 
+  for (let i = 0; i < 3; i++) await p.keyboard.press('ArrowUp');
+  await p.waitForTimeout(500);
+  const kbOpen = await style('open-agent');
+  // the 2px outline covers the ring's outer 2px: the ring must be wider than that to show
+  const ringPx = Math.max(0, ...[...kbOpen.shadow.matchAll(/0px 0px 0px (\d+)px inset/g)].map((m) => +m[1]));
+  check('AC-4 keyboard cursor visible on the open card', kbOpen.selected === 'true' && kbOpen.outline === 2 && ringPx > 2, kbOpen.shadow);
+  await rail.screenshot({ path: `${out}/rail-keyboard-on-open.png` });
+
   await b.close();
   process.exit(fails ? 1 : 0);
 })().catch((e) => {
