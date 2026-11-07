@@ -2196,10 +2196,13 @@ const refuseUpgrade = (socket, status) => {
 };
 
 // Browsers do not apply CORS to WebSockets: a foreign page could open a PTY on localhost. Same-origin
-// pages (the app served through `tailscale serve`) and the CORS origins pass.
+// pages (the app served through `tailscale serve`) and the CORS origins pass. Same host only in
+// remote mode: without it a DNS-rebound name would pass, with it a non-loopback Host still needs
+// the token or an authorizer (isAuthorized).
 const isAllowedUpgradeOrigin = (req) => {
   const origin = req.headers.origin;
   if (!origin || isAllowedOrigin(origin)) return true;
+  if (!remoteAccess.isRemoteEnabled()) return false;
   try {
     return new URL(origin).host === req.headers.host;
   } catch {

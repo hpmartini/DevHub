@@ -32,6 +32,9 @@ const until = async (fn, ms = 15000) => {
   try {
     await p.goto(`${urlA}/agents`, { waitUntil: 'load' });
     await rowOf(p, 'Lokale Sitzung A').first().waitFor({ timeout: 90000 });
+    // A local tab opened before the switch must survive A -> B -> A (no prune on a stale list)
+    await rowOf(p, 'Lokale Sitzung A').first().dblclick();
+    await p.locator('[data-agent-pane="local-a1"]').waitFor({ timeout: 15000 });
     const picker = p.getByTestId('mesh-picker');
     await picker.waitFor({ timeout: 15000 });
     check('AC-1 picker at the Agents label', /Dieser Rechner/.test(await picker.textContent()));
@@ -73,7 +76,7 @@ const until = async (fn, ms = 15000) => {
       'AC-2 terminal input reaches the PTY on B',
       await until(async () => /peer-b got: hallo mesh/.test((await term.textContent()) || ''))
     );
-    check('AC-2 nothing attached locally', !calls('local-a').some((l) => l.startsWith('attach')));
+    check('AC-2 nothing attached locally', !calls('local-a').includes('attach peer-b1'));
     await p.screenshot({ path: `${out}/peer-terminal.png` });
 
     // AC-4: peek (logs) of a peer session through the relay
@@ -145,6 +148,10 @@ const until = async (fn, ms = 15000) => {
     await rowOf(p, 'Lokale Sitzung A').first().waitFor({ timeout: 15000 });
     await p.waitForTimeout(1500);
     check('AC-5 peer tab still open', (await p.locator('[data-agent-pane="peer-b1"]').count()) > 0);
+    check(
+      'AC-5 local tab survived A -> B -> A',
+      (await p.locator('[data-agent-pane="local-a1"]').count()) > 0
+    );
     check(
       'AC-5 no re-attach on switch',
       calls('peer-b').filter((l) => l === 'attach peer-b1').length === attaches,

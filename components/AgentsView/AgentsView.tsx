@@ -207,6 +207,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   const palette = useCommandPalette();
   const {
     sessions,
+    listTarget,
     daemon,
     userSettings,
     cliInstalled,
@@ -621,20 +622,39 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     };
   }, [active, settings.scopeCwd, sessions.length]);
 
-  // Drop tabs for sessions that no longer exist
+  // Drop tabs for sessions that no longer exist; right after a switch `sessions` still holds the
+  // previous instance's list for one render, so only a list of the picked target counts
+  const listIsCurrent = listTarget === agentTarget;
   useEffect(() => {
-    if (loading || sessions.length === 0 || !chats.loaded) return;
+    if (loading || !listIsCurrent || sessions.length === 0 || !chats.loaded) return;
     pruneMissing(
       new Set([...sessions, ...cloudSessions, ...chats.chats, ...foreignPanes].map((s) => s.id))
     );
-  }, [sessions, cloudSessions, chats.chats, foreignPanes, chats.loaded, loading, pruneMissing]);
+  }, [
+    sessions,
+    cloudSessions,
+    chats.chats,
+    foreignPanes,
+    chats.loaded,
+    loading,
+    listIsCurrent,
+    pruneMissing,
+  ]);
 
   // Forget open row details of removed sessions; a scoped (--cwd) or failed list is incomplete
   const { pruneExpandedSessions } = rail;
   useEffect(() => {
-    if (loading || error || settings.scopeCwd || sessions.length === 0) return;
+    if (loading || !listIsCurrent || error || settings.scopeCwd || sessions.length === 0) return;
     pruneExpandedSessions([...sessions, ...cloudSessions].map((s) => s.id));
-  }, [sessions, cloudSessions, loading, error, settings.scopeCwd, pruneExpandedSessions]);
+  }, [
+    sessions,
+    cloudSessions,
+    loading,
+    listIsCurrent,
+    error,
+    settings.scopeCwd,
+    pruneExpandedSessions,
+  ]);
 
   const showHint = useCallback(
     (text: string, tone: 'info' | 'error' | 'success' = 'info', ttl = 4000) => {
@@ -788,12 +808,18 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
    * or another harness (#195), which gets `ptyArgs` as is.
    */
   const openInteractiveClaude = useCallback(
-    (cwd: string, name: string, ptyArgs: string[] = [], command: AgentHarness = 'claude') => {
+    (
+      cwd: string,
+      name: string,
+      ptyArgs: string[] = [],
+      command: AgentHarness = 'claude',
+      target = getAgentTarget()
+    ) => {
       const id = `interactive-${Date.now()}`;
       // A known session id lets "Open as chat" resume this terminal's session later
       if (command === 'claude' && ptyArgs.length === 0)
         ptyArgs = ['--session-id', crypto.randomUUID()];
-      pinTarget(id, getAgentTarget());
+      pinTarget(id, target);
       setCloudSessions((prev) => [
         ...prev,
         {
@@ -865,10 +891,14 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         attach(chat.viewOf);
         return;
       }
-      openInteractiveClaude(chat?.cwd || homeDir || '', chat?.name || 'claude', [
-        '--resume',
-        sessionId,
-      ]);
+      // The chat's session lives on the chat's instance, not on the one picked now
+      openInteractiveClaude(
+        chat?.cwd || homeDir || '',
+        chat?.name || 'claude',
+        ['--resume', sessionId],
+        'claude',
+        targetOf(chatId)
+      );
     },
     [chats.chats, closePane, stopChatSession, openInteractiveClaude, homeDir, attach]
   );

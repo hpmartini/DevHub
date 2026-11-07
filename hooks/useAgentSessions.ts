@@ -50,6 +50,8 @@ export function useAgentSessions({ active = true }: UseAgentSessionsOptions = {}
   settingsRef.current = settings;
   // #220: the list belongs to the instance picked in the agents rail (utils/agentTarget)
   const target = useAgentTarget();
+  // Target the current `sessions` came from; null while a switch waits for the new list
+  const [listTarget, setListTarget] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const asked = getAgentTarget();
@@ -58,6 +60,7 @@ export function useAgentSessions({ active = true }: UseAgentSessionsOptions = {}
       // An answer from the instance picked before a switch is not this list
       if (asked !== getAgentTarget()) return;
       setSessions(data.sessions);
+      setListTarget(asked);
       setDaemon(data.daemon);
       setUserSettings(data.userSettings);
       setCliInstalled(data.cli.installed);
@@ -73,6 +76,7 @@ export function useAgentSessions({ active = true }: UseAgentSessionsOptions = {}
   // A switch empties the list until the picked instance answers: no rows of the previous one
   useEffect(() => {
     setSessions([]);
+    setListTarget(null);
     setError(null);
     setLoading(true);
   }, [target]);
@@ -186,6 +190,7 @@ export function useAgentSessions({ active = true }: UseAgentSessionsOptions = {}
 
   return {
     sessions,
+    listTarget,
     daemon,
     userSettings,
     cliInstalled,

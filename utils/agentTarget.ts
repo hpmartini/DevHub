@@ -42,6 +42,8 @@ export function useAgentTarget(): string {
 }
 
 /** First target an id was seen on wins: a later list from another instance never moves a tab */
+// shortcut: keyed by id alone; claude job ids are random, so an id on two instances does not
+// happen in practice. Key by target+id once ids can collide (e.g. instance-local counters).
 export function pinTarget(id: string, target: string): void {
   if (id && !pinned.has(id)) pinned.set(id, target);
 }
